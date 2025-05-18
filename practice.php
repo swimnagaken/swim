@@ -758,7 +758,7 @@ include 'includes/header.php';
                         <td class="py-3 px-4"><?php echo h($set['type_name'] ?? '-'); ?></td>
                         <td class="py-3 px-4">
                             <?php
-                           <?php
+                           
                            $strokeMap = [
                                'freestyle' => '自由形',
                                'backstroke' => '背泳ぎ',
