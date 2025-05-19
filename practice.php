@@ -2023,10 +2023,362 @@ include 'includes/header.php';
     }
     
     // セットインデックスの更新
-    function updateSetIndexes() {
-        const container = document.getElementById('sets-container');
-        const setItems = container.querySelectorAll('.set-item');
+function updateSetIndexes() {
+    const container = document.getElementById('sets-container');
+    const setItems = container.querySelectorAll('.set-item');
+    
+    setItems.forEach((item, index) => {
+        // タイトル更新
+        const title = item.querySelector('h4');
+        if (title) {
+            title.textContent = 'セット ' + (index + 1);
+        }
         
-        setItems.forEach((item, index) => {
-            // タイトル更新
-            const
+        // name属性の更新
+        item.querySelectorAll('[name]').forEach(el => {
+            el.name = el.name.replace(/sets\[\d+\]/, 'sets[' + index + ']');
+        });
+    });
+}
+</script>
+
+<?php elseif ($action === 'list' || $action === 'search'): ?>
+    <!-- 練習履歴一覧 -->
+    <div class="mb-6 flex justify-between items-center">
+        <h1 class="text-2xl font-bold">練習記録</h1>
+        <a href="practice.php?action=new" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center">
+            <i class="fas fa-plus mr-2"></i> 新しい練習を記録
+        </a>
+    </div>
+    
+    <!-- 検索フィルター -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-lg font-semibold mb-4">検索・フィルター</h2>
+        
+        <form action="practice.php" method="GET" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <input type="hidden" name="action" value="search">
+            
+            <!-- 日付範囲 -->
+            <div>
+                <label for="date_from" class="block text-gray-700 mb-2 text-sm">練習日（開始）</label>
+                <input
+                    type="date"
+                    id="date_from"
+                    name="date_from"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2"
+                    value="<?php echo isset($filters['date_from']) ? $filters['date_from'] : ''; ?>"
+                >
+            </div>
+            
+            <div>
+                <label for="date_to" class="block text-gray-700 mb-2 text-sm">練習日（終了）</label>
+                <input
+                    type="date"
+                    id="date_to"
+                    name="date_to"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2"
+                    value="<?php echo isset($filters['date_to']) ? $filters['date_to'] : ''; ?>"
+                >
+            </div>
+            
+            <!-- 距離範囲 -->
+            <div>
+                <label for="distance_min" class="block text-gray-700 mb-2 text-sm">距離（最小）</label>
+                <input
+                    type="number"
+                    id="distance_min"
+                    name="distance_min"
+                    min="0"
+                    step="100"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="例: 1000"
+                    value="<?php echo isset($filters['distance_min']) ? $filters['distance_min'] : ''; ?>"
+                >
+            </div>
+            
+            <div>
+                <label for="distance_max" class="block text-gray-700 mb-2 text-sm">距離（最大）</label>
+                <input
+                    type="number"
+                    id="distance_max"
+                    name="distance_max"
+                    min="0"
+                    step="100"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="例: 5000"
+                    value="<?php echo isset($filters['distance_max']) ? $filters['distance_max'] : ''; ?>"
+                >
+            </div>
+            
+            <!-- プール -->
+            <div>
+                <label for="pool_id" class="block text-gray-700 mb-2 text-sm">プール</label>
+                <select
+                    id="pool_id"
+                    name="pool_id"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2"
+                >
+                    <option value="">すべて</option>
+                    <?php foreach ($filterOptions['pools'] as $pool): ?>
+                    <option 
+                        value="<?php echo $pool['pool_id']; ?>"
+                        <?php echo isset($filters['pool_id']) && $filters['pool_id'] == $pool['pool_id'] ? 'selected' : ''; ?>
+                    >
+                        <?php echo h($pool['pool_name']); ?>
+                        <?php echo $pool['is_favorite'] ? ' ⭐' : ''; ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <!-- 泳法 -->
+            <div>
+                <label for="stroke_type" class="block text-gray-700 mb-2 text-sm">泳法</label>
+                <select
+                    id="stroke_type"
+                    name="stroke_type"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2"
+                >
+                    <option value="">すべて</option>
+                    <?php foreach ($filterOptions['stroke_types'] as $value => $label): ?>
+                    <option 
+                        value="<?php echo $value; ?>"
+                        <?php echo isset($filters['stroke_type']) && $filters['stroke_type'] === $value ? 'selected' : ''; ?>
+                    >
+                        <?php echo $label; ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <!-- キーワード -->
+            <div>
+                <label for="keyword" class="block text-gray-700 mb-2 text-sm">キーワード</label>
+                <input
+                    type="text"
+                    id="keyword"
+                    name="keyword"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="課題、メモなどから検索"
+                    value="<?php echo isset($filters['keyword']) ? h($filters['keyword']) : ''; ?>"
+                >
+            </div>
+            
+            <!-- 並び順 -->
+            <div>
+                <label for="sort_by" class="block text-gray-700 mb-2 text-sm">並び順</label>
+                <select
+                    id="sort_by"
+                    name="sort_by"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2"
+                >
+                    <?php foreach ($filterOptions['sort_options'] as $value => $label): ?>
+                    <option 
+                        value="<?php echo $value; ?>"
+                        <?php echo isset($filters['sort_by']) && $filters['sort_by'] === $value ? 'selected' : ''; ?>
+                    >
+                        <?php echo $label; ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <!-- 検索ボタン -->
+            <div class="md:col-span-2 lg:col-span-3 flex justify-end space-x-2 mt-2">
+                <a href="practice.php" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg">
+                    リセット
+                </a>
+                <button
+                    type="submit"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg"
+                >
+                    <i class="fas fa-search mr-1"></i> 検索
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- 練習記録一覧 -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="mb-4 flex justify-between items-center">
+            <h2 class="text-lg font-semibold">
+                <?php if ($isFiltered): ?>
+                <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">フィルター適用中</span>
+                <?php endif; ?>
+                練習記録一覧
+            </h2>
+            
+            <div class="text-sm">
+                <a href="templates.php" class="text-blue-600 hover:text-blue-800">
+                    <i class="fas fa-copy mr-1"></i> テンプレート管理
+                </a>
+            </div>
+        </div>
+        
+        <?php
+        // 練習記録データの取得
+        $practices = [];
+        $pagination = [
+            'total_count' => 0,
+            'total_pages' => 1,
+            'page' => 1
+        ];
+        
+        try {
+            $result = searchPractices($db, $_SESSION['user_id'], $filters, $page, $limit);
+            $practices = $result['practices'];
+            $pagination = [
+                'total_count' => $result['total_count'],
+                'total_pages' => $result['total_pages'],
+                'page' => $result['page']
+            ];
+        } catch (PDOException $e) {
+            error_log('練習履歴取得エラー: ' . $e->getMessage());
+            echo '<div class="bg-red-100 text-red-700 p-4 rounded mb-4">データの取得中にエラーが発生しました。</div>';
+        }
+        ?>
+        
+        <?php if (empty($practices)): ?>
+        <div class="text-center py-8">
+            <p class="text-gray-500 mb-6">
+                <?php if ($isFiltered): ?>
+                検索条件に一致する練習記録がありません。<br>条件を変更して再度検索してください。
+                <?php else: ?>
+                まだ練習記録がありません。<br>新しい練習を記録しましょう。
+                <?php endif; ?>
+            </p>
+            <a href="practice.php?action=new" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg inline-flex items-center">
+                <i class="fas fa-plus mr-2"></i>
+                練習を記録する
+            </a>
+        </div>
+        <?php else: ?>
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="py-2 px-4 text-left">日付</th>
+                        <th class="py-2 px-4 text-left">距離</th>
+                        <th class="py-2 px-4 text-left">プール</th>
+                        <th class="py-2 px-4 text-left">時間</th>
+                        <th class="py-2 px-4 text-left">調子</th>
+                        <th class="py-2 px-4 text-left">課題</th>
+                        <th class="py-2 px-4 text-left">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($practices as $practice): ?>
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <?php echo date('Y/m/d (', strtotime($practice['practice_date'])); ?>
+                            <?php echo ['日', '月', '火', '水', '木', '金', '土'][date('w', strtotime($practice['practice_date']))]; ?>
+                            <?php echo ')'; ?>
+                        </td>
+                        <td class="py-3 px-4 whitespace-nowrap font-medium">
+                            <?php echo number_format($practice['total_distance']); ?> m
+                        </td>
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <?php echo h($practice['pool_name'] ?? '-'); ?>
+                        </td>
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <?php
+                            if ($practice['duration']) {
+                                $hours = floor($practice['duration'] / 60);
+                                $minutes = $practice['duration'] % 60;
+                                if ($hours > 0) {
+                                    echo $hours . '時間';
+                                    if ($minutes > 0) {
+                                        echo ' ';
+                                    }
+                                }
+                                if ($minutes > 0 || $hours === 0) {
+                                    echo $minutes . '分';
+                                }
+                            } else {
+                                echo '-';
+                            }
+                            ?>
+                        </td>
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <?php 
+                            if ($practice['feeling']) {
+                                $feelingEmojis = [1 => '😞', 2 => '😞', 3 => '😐', 4 => '😊', 5 => '😊'];
+                                echo $feelingEmojis[$practice['feeling']];
+                            } else {
+                                echo '-';
+                            }
+                            ?>
+                        </td>
+                        <td class="py-3 px-4">
+                            <div class="max-w-xs truncate">
+                                <?php echo !empty($practice['challenge']) ? h($practice['challenge']) : '-'; ?>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <a href="practice.php?action=view&id=<?php echo $practice['session_id']; ?>" class="text-blue-600 hover:text-blue-800">
+                                詳細
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- ページネーション -->
+        <?php if ($pagination['total_pages'] > 1): ?>
+        <div class="flex justify-center mt-6">
+            <nav>
+                <ul class="flex space-x-2">
+                    <!-- 前のページ -->
+                    <?php if ($pagination['page'] > 1): ?>
+                    <li>
+                        <a 
+                            href="practice.php?<?php echo http_build_query(array_merge($_GET, ['page' => $pagination['page'] - 1])); ?>" 
+                            class="border border-gray-300 px-3 py-1 rounded hover:bg-gray-100"
+                        >
+                            前へ
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                    
+                    <!-- ページ番号 -->
+                    <?php
+                    $start = max(1, $pagination['page'] - 2);
+                    $end = min($pagination['total_pages'], $pagination['page'] + 2);
+                    
+                    for ($i = $start; $i <= $end; $i++): 
+                    ?>
+                    <li>
+                        <a 
+                            href="practice.php?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>" 
+                            class="<?php echo $i === $pagination['page'] ? 'bg-blue-600 text-white' : 'border border-gray-300 hover:bg-gray-100'; ?> px-3 py-1 rounded"
+                        >
+                            <?php echo $i; ?>
+                        </a>
+                    </li>
+                    <?php endfor; ?>
+                    
+                    <!-- 次のページ -->
+                    <?php if ($pagination['page'] < $pagination['total_pages']): ?>
+                    <li>
+                        <a 
+                            href="practice.php?<?php echo http_build_query(array_merge($_GET, ['page' => $pagination['page'] + 1])); ?>" 
+                            class="border border-gray-300 px-3 py-1 rounded hover:bg-gray-100"
+                        >
+                            次へ
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+        </div>
+        <?php endif; ?>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
+
+<?php
+// フッターの読み込み
+include 'includes/footer.php';
+?>

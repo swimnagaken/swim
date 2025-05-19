@@ -27,8 +27,10 @@ try {
     
     // テンプレート基本情報を取得
     $stmt = $db->prepare("
-        SELECT * FROM practice_templates
-        WHERE template_id = ? AND user_id = ?
+        SELECT t.*, tc.category_name 
+        FROM practice_templates t
+        LEFT JOIN template_categories tc ON t.category = tc.category_id
+        WHERE t.template_id = ? AND t.user_id = ?
     ");
     $stmt->execute([$template_id, $_SESSION['user_id']]);
     $template = $stmt->fetch();
@@ -98,9 +100,36 @@ include 'includes/header.php';
     <!-- 基本情報 -->
     <div class="md:col-span-2 bg-white rounded-lg shadow-md p-6">
         <div class="flex justify-between items-start mb-4">
-            <h2 class="text-xl font-semibold"><?php echo h($template['template_name']); ?></h2>
+            <div>
+                <h2 class="text-xl font-semibold"><?php echo h($template['template_name']); ?></h2>
+                <?php if (!empty($template['category_name'])): ?>
+                <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mt-1">
+                    <?php echo h($template['category_name']); ?>
+                </span>
+                <?php endif; ?>
+            </div>
             
             <div class="flex space-x-2">
+                <!-- お気に入りトグルボタン -->
+                <form method="POST" action="api/templates.php" class="inline-block toggle-favorite-form">
+                    <input type="hidden" name="csrf_token" value="<?php echo h(generateCsrfToken()); ?>">
+                    <input type="hidden" name="action" value="toggle_favorite">
+                    <input type="hidden" name="template_id" value="<?php echo $template_id; ?>">
+                    <button type="submit" class="text-yellow-500 hover:text-yellow-600" title="<?php echo $template['is_favorite'] ? 'お気に入りから削除' : 'お気に入りに追加'; ?>">
+                        <i class="<?php echo $template['is_favorite'] ? 'fas' : 'far'; ?> fa-star"></i>
+                    </button>
+                </form>
+                
+                <!-- 公開設定トグルボタン -->
+                <form method="POST" action="api/templates.php" class="inline-block toggle-public-form">
+                    <input type="hidden" name="csrf_token" value="<?php echo h(generateCsrfToken()); ?>">
+                    <input type="hidden" name="action" value="toggle_public">
+                    <input type="hidden" name="template_id" value="<?php echo $template_id; ?>">
+                    <button type="submit" class="text-green-500 hover:text-green-600" title="<?php echo $template['is_public'] ? '非公開にする' : '公開する'; ?>">
+                        <i class="<?php echo $template['is_public'] ? 'fas' : 'far'; ?> fa-globe"></i>
+                    </button>
+                </form>
+                
                 <a href="template_edit.php?id=<?php echo $template_id; ?>" class="bg-blue-600 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded-lg">
                     <i class="fas fa-edit mr-1"></i> 編集
                 </a>
@@ -133,6 +162,13 @@ include 'includes/header.php';
                 <p class="font-medium"><?php echo date('Y年n月j日', strtotime($template['updated_at'])); ?></p>
             </div>
             <?php endif; ?>
+            
+            <?php if ($template['usage_count'] > 0): ?>
+            <div>
+                <p class="text-gray-600 text-sm">使用回数</p>
+                <p class="font-medium"><?php echo number_format($template['usage_count']); ?> 回</p>
+            </div>
+            <?php endif; ?>
         </div>
         
         <?php if (!empty($template['description'])): ?>
@@ -161,7 +197,40 @@ include 'includes/header.php';
             <a href="template_create.php?duplicate_id=<?php echo $template_id; ?>" class="block w-full bg-purple-600 hover:bg-purple-700 text-white text-center font-medium py-2 px-4 rounded-lg">
                 <i class="fas fa-copy mr-2"></i> 複製して新規作成
             </a>
+            
+            <!-- 公開状態の管理 -->
+            <form method="POST" action="api/templates.php">
+                <input type="hidden" name="csrf_token" value="<?php echo h(generateCsrfToken()); ?>">
+                <input type="hidden" name="action" value="toggle_public">
+                <input type="hidden" name="template_id" value="<?php echo $template_id; ?>">
+                <button type="submit" class="block w-full bg-teal-600 hover:bg-teal-700 text-white text-center font-medium py-2 px-4 rounded-lg">
+                    <i class="fas <?php echo $template['is_public'] ? 'fa-lock' : 'fa-globe'; ?> mr-2"></i>
+                    <?php echo $template['is_public'] ? 'テンプレートを非公開にする' : 'テンプレートを公開する'; ?>
+                </button>
+            </form>
         </div>
+        
+        <?php if ($template['is_public']): ?>
+        <div class="mt-6 border-t pt-4">
+            <h3 class="text-md font-medium mb-3">共有リンク</h3>
+            <div class="flex">
+                <input 
+                    type="text" 
+                    id="share-url" 
+                    value="<?php echo h(getBaseUrl() . 'templates_public.php?id=' . $template_id); ?>" 
+                    class="flex-grow border border-gray-300 rounded-l-md px-3 py-2 bg-gray-50" 
+                    readonly
+                >
+                <button 
+                    type="button" 
+                    id="copy-link-btn" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-r-md"
+                >
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -311,10 +380,108 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // お気に入りトグルのAjax処理
+    document.querySelectorAll('.toggle-favorite-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const starIcon = this.querySelector('i');
+            
+            fetch('api/templates.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // アイコンのクラスを切り替え
+                    if (data.is_favorite) {
+                        starIcon.classList.replace('far', 'fas');
+                    } else {
+                        starIcon.classList.replace('fas', 'far');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    });
+    
+    // 公開設定トグルのAjax処理
+    document.querySelectorAll('.toggle-public-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const globeIcon = this.querySelector('i');
+            
+            fetch('api/templates.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // アイコンのクラスを切り替え
+                    if (data.is_public) {
+                        globeIcon.classList.replace('far', 'fas');
+                    } else {
+                        globeIcon.classList.replace('fas', 'far');
+                    }
+                    
+                    // ページをリロード
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    });
+    
+    // 共有リンクのコピー
+    const copyLinkBtn = document.getElementById('copy-link-btn');
+    if (copyLinkBtn) {
+        copyLinkBtn.addEventListener('click', function() {
+            const shareUrl = document.getElementById('share-url');
+            
+            // テキストを選択
+            shareUrl.select();
+            shareUrl.setSelectionRange(0, 99999); // モバイル向け
+            
+            // クリップボードにコピー
+            document.execCommand('copy');
+            
+            // コピー完了の表示
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-check"></i>';
+            
+            setTimeout(() => {
+                this.innerHTML = originalText;
+            }, 2000);
+        });
+    }
 });
 </script>
 
 <?php
+// ベースURLを取得する関数
+function getBaseUrl() {
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'];
+    $path = dirname($_SERVER['PHP_SELF']);
+    
+    // パスの最後のスラッシュを確認
+    if (substr($path, -1) !== '/') {
+        $path .= '/';
+    }
+    
+    return "$protocol://$host$path";
+}
+
 // フッターの読み込み
 include 'includes/footer.php';
 ?>

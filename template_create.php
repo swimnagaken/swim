@@ -14,8 +14,11 @@ $duplicate_id = isset($_GET['duplicate_id']) ? (int)$_GET['duplicate_id'] : 0;
 // テンプレート情報の初期化
 $template = [
     'template_name' => '',
+    'category' => null,
     'description' => '',
-    'total_distance' => 0
+    'total_distance' => 0,
+    'is_favorite' => 0,
+    'is_public' => 0
 ];
 $sets = [];
 
@@ -35,8 +38,11 @@ if ($duplicate_id > 0) {
         if ($source_template) {
             $template = [
                 'template_name' => $source_template['template_name'] . ' (コピー)',
+                'category' => $source_template['category'],
                 'description' => $source_template['description'],
-                'total_distance' => $source_template['total_distance']
+                'total_distance' => $source_template['total_distance'],
+                'is_favorite' => 0,  // コピー時はお気に入りにしない
+                'is_public' => 0     // コピー時は非公開にする
             ];
             
             // テンプレートセットを取得
@@ -67,6 +73,21 @@ if ($duplicate_id > 0) {
         error_log('テンプレート複製エラー: ' . $e->getMessage());
         $_SESSION['error_messages'][] = 'テンプレートの複製中にエラーが発生しました。';
     }
+}
+
+// カテゴリ一覧を取得
+$categories = [];
+try {
+    $db = getDbConnection();
+    $stmt = $db->prepare("
+        SELECT * FROM template_categories
+        WHERE user_id = ? OR is_system = 1
+        ORDER BY is_system DESC, category_name ASC
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $categories = $stmt->fetchAll();
+} catch (PDOException $e) {
+    error_log('カテゴリ一覧取得エラー: ' . $e->getMessage());
 }
 
 // 練習種別と器具の一覧を取得
@@ -149,6 +170,27 @@ include 'includes/header.php';
                 >
             </div>
             
+            <!-- カテゴリ -->
+            <div>
+                <label for="category" class="block text-gray-700 mb-2">カテゴリ</label>
+                <select
+                    id="category"
+                    name="category"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <option value="">選択してください</option>
+                    <?php foreach ($categories as $category): ?>
+                    <option 
+                        value="<?php echo $category['category_id']; ?>"
+                        <?php echo $template['category'] == $category['category_id'] ? 'selected' : ''; ?>
+                    >
+                        <?php echo h($category['category_name']); ?>
+                        <?php echo $category['is_system'] ? ' (システム)' : ''; ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
             <!-- 総距離 -->
             <div>
                 <label for="total_distance" class="block text-gray-700 mb-2">総距離 (m) <span class="text-red-500">*</span></label>
@@ -163,6 +205,31 @@ include 'includes/header.php';
                     value="<?php echo $template['total_distance']; ?>"
                     placeholder="例: 2000"
                 >
+            </div>
+            
+            <!-- 公開設定 -->
+            <div class="flex items-center space-x-6">
+                <label class="inline-flex items-center">
+                    <input 
+                        type="checkbox" 
+                        name="is_favorite" 
+                        value="1" 
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                        <?php echo $template['is_favorite'] ? 'checked' : ''; ?>
+                    >
+                    <span class="ml-2 text-gray-700">お気に入りに登録</span>
+                </label>
+                
+                <label class="inline-flex items-center">
+                    <input 
+                        type="checkbox" 
+                        name="is_public" 
+                        value="1" 
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                        <?php echo $template['is_public'] ? 'checked' : ''; ?>
+                    >
+                    <span class="ml-2 text-gray-700">公開する</span>
+                </label>
             </div>
         </div>
         
@@ -617,8 +684,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateSetNumbers() {
         document.querySelectorAll('.set-item').forEach((setItem, index) => {
             setItem.querySelector('.set-number').textContent = index + 1;
-            
-            // nameやid属性を更新する必要がある場合はここに追加
         });
     }
     
