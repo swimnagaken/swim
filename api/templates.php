@@ -75,6 +75,7 @@ function createTemplate() {
     $description = trim($_POST['description'] ?? '');
     $total_distance = (int)($_POST['total_distance'] ?? 0);
     $sets = $_POST['sets'] ?? [];
+    $redirect_to_practice = isset($_POST['redirect_to_practice']) ? (bool)$_POST['redirect_to_practice'] : false;
     
     // 必須項目の検証
     if (empty($template_name) || $total_distance <= 0 || empty($sets)) {
@@ -105,9 +106,9 @@ function createTemplate() {
         $setStmt = $db->prepare("
             INSERT INTO template_sets (
                 template_id, type_id, stroke_type, distance, repetitions, 
-                cycle, total_distance, notes, order_index
+                cycle, total_distance, notes, order_index, options
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         // 器具登録用のステートメント
@@ -119,6 +120,8 @@ function createTemplate() {
         // 各セットを処理
         foreach ($sets as $index => $set) {
             $type_id = !empty($set['type_id']) ? (int)$set['type_id'] : null;
+            $options = isset($set['options']) ? json_encode($set['options']) : null;
+            
             $setStmt->execute([
                 $template_id,
                 $type_id,
@@ -128,7 +131,8 @@ function createTemplate() {
                 $set['cycle'] ?? null,
                 (int)($set['total_distance'] ?? 0),
                 $set['notes'] ?? null,
-                $index
+                $index,
+                $options
             ]);
             
             // セットに紐づく器具の登録
@@ -144,13 +148,17 @@ function createTemplate() {
         
         $db->commit();
         
-        // 成功レスポンス
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'message' => 'テンプレートが正常に作成されました。',
-            'template_id' => $template_id
-        ]);
+        // 成功メッセージの設定
+        $_SESSION['success_messages'][] = 'テンプレートが正常に作成されました。';
+        
+        // 練習記録画面へのリダイレクトが要求された場合
+        if ($redirect_to_practice) {
+            header('Location: ../practice.php?action=new&template_id=' . $template_id);
+            exit;
+        }
+        
+        // 通常のリダイレクト
+        header('Location: ../template_detail.php?id=' . $template_id);
         exit;
         
     } catch (PDOException $e) {
@@ -172,6 +180,7 @@ function updateTemplate() {
     $description = trim($_POST['description'] ?? '');
     $total_distance = (int)($_POST['total_distance'] ?? 0);
     $sets = $_POST['sets'] ?? [];
+    $redirect_to_practice = isset($_POST['redirect_to_practice']) ? (bool)$_POST['redirect_to_practice'] : false;
     
     // 必須項目の検証
     if ($template_id <= 0 || empty($template_name) || $total_distance <= 0 || empty($sets)) {
@@ -212,9 +221,9 @@ function updateTemplate() {
         $setStmt = $db->prepare("
             INSERT INTO template_sets (
                 template_id, type_id, stroke_type, distance, repetitions, 
-                cycle, total_distance, notes, order_index
+                cycle, total_distance, notes, order_index, options
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         // 器具登録用のステートメント
@@ -226,6 +235,8 @@ function updateTemplate() {
         // 各セットを処理
         foreach ($sets as $index => $set) {
             $type_id = !empty($set['type_id']) ? (int)$set['type_id'] : null;
+            $options = isset($set['options']) ? json_encode($set['options']) : null;
+            
             $setStmt->execute([
                 $template_id,
                 $type_id,
@@ -235,7 +246,8 @@ function updateTemplate() {
                 $set['cycle'] ?? null,
                 (int)($set['total_distance'] ?? 0),
                 $set['notes'] ?? null,
-                $index
+                $index,
+                $options
             ]);
             
             // セットに紐づく器具の登録
@@ -251,12 +263,17 @@ function updateTemplate() {
         
         $db->commit();
         
-        // 成功レスポンス
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'message' => 'テンプレートが正常に更新されました。'
-        ]);
+        // 成功メッセージの設定
+        $_SESSION['success_messages'][] = 'テンプレートが正常に更新されました。';
+        
+        // 練習記録画面へのリダイレクトが要求された場合
+        if ($redirect_to_practice) {
+            header('Location: ../practice.php?action=new&template_id=' . $template_id);
+            exit;
+        }
+        
+        // 通常のリダイレクト
+        header('Location: ../template_detail.php?id=' . $template_id);
         exit;
         
     } catch (PDOException $e) {
@@ -267,6 +284,10 @@ function updateTemplate() {
         exit;
     }
 }
+
+// 以下の関数は変更なしのため省略しています
+// deleteTemplate(), createTemplateFromPractice(), getTemplateList(), getTemplateDetail()
+// これらの関数はオリジナルのファイルをそのまま使用してください
 
 /**
  * テンプレートを削除する

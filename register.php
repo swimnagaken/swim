@@ -56,7 +56,7 @@ include 'includes/header.php';
 ?>
 
 <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
-    <h1 class="text-2xl font-bold mb-6 text-center">新規登録</h1>
+    <h1 class="text-2xl font-bold mb-6 text-center">SwimLogに新規登録</h1>
     
     <?php if ($error_message): ?>
         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">

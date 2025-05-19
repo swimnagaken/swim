@@ -180,6 +180,9 @@ function getFilterOptions($db, $userId) {
         'breaststroke' => '平泳ぎ',
         'butterfly' => 'バタフライ',
         'im' => '個人メドレー',
+        'kick' => 'キック',
+        'pull' => 'プル',
+        'drill' => 'ドリル',
         'other' => 'その他'
     ];
     
