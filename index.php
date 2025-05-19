@@ -14,8 +14,11 @@ include 'includes/header.php';
     <div class="container mx-auto px-6">
         <div class="flex flex-col md:flex-row items-center">
             <div class="md:w-1/2 mb-8 md:mb-0">
-                <h1 class="text-4xl font-bold mb-4">水泳練習を賢く管理しよう</h1>
-                <p class="text-xl mb-6">スイムトラッカーは、スイマーのための練習記録・分析アプリです。日々の練習を記録して、あなたの成長を可視化します。</p>
+                <div class="flex items-center mb-6">
+                    <img src="assets/images/logo.png" alt="SwimLog" class="h-16 mr-3">
+                    <h1 class="text-4xl font-bold">SwimLog</h1>
+                </div>
+                <p class="text-xl mb-6">水泳練習を賢く管理するアプリ。日々の練習を記録して、あなたの成長を可視化します。</p>
                 <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
                     <a href="register.php" class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition text-center">
                         無料で始める
@@ -35,7 +38,7 @@ include 'includes/header.php';
 <!-- 機能紹介セクション -->
 <section id="features" class="py-16 bg-white">
     <div class="container mx-auto px-6">
-        <h2 class="text-3xl font-bold text-center mb-12">スイムトラッカーの主な機能</h2>
+        <h2 class="text-3xl font-bold text-center mb-12">SwimLogの主な機能</h2>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <!-- 機能1 -->
@@ -79,11 +82,23 @@ include 'includes/header.php';
     <div class="container mx-auto px-6 text-center">
         <h2 class="text-3xl font-bold mb-6">今すぐ水泳練習の記録を始めよう</h2>
         <p class="text-xl mb-8 max-w-3xl mx-auto">
-            スイムトラッカーで練習を記録し、あなたの成長を可視化しましょう。登録は簡単、完全無料で始められます。
+            SwimLogで練習を記録し、あなたの成長を可視化しましょう。登録は簡単、完全無料で始められます。
         </p>
         <a href="register.php" class="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-blue-50 transition inline-block">
             無料アカウントを作成する
         </a>
+    </div>
+</section>
+
+<!-- 運営会社情報 -->
+<section class="py-12 bg-gray-50">
+    <div class="container mx-auto px-6 text-center">
+        <h2 class="text-2xl font-bold mb-4">運営会社</h2>
+        <p class="text-lg mb-2">Cre.eight12</p>
+        <p class="text-gray-600 mb-4">水泳や交通に関するサービスを提供します。</p>
+        <p class="text-sm text-gray-500">
+            お問い合わせは <a href="mailto:cre.eight12@gmail.com" class="text-blue-600 hover:underline">cre.eight12@gmail.com</a> までお願いします。
+        </p>
     </div>
 </section>
 

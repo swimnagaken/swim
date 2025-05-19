@@ -6,12 +6,12 @@
             <div class="flex flex-col md:flex-row justify-between items-center">
                 <div class="mb-4 md:mb-0">
                     <div class="flex items-center">
-                        <i class="fas fa-swimming-pool text-xl mr-2"></i>
-                        <span class="font-bold">スイムトラッカー</span>
+                        <img src="assets/images/logo.png" alt="SwimLog" class="h-6 mr-2">
+                        <span class="font-bold">SwimLog</span>
                     </div>
                 </div>
                 <div class="text-sm text-gray-400">
-                    &copy; <?php echo date('Y'); ?> スイムトラッカー. All rights reserved.
+                    &copy; <?php echo date('Y'); ?> SwimLog by Cre.eight12. All rights reserved.
                 </div>
             </div>
         </div>

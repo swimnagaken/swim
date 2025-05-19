@@ -9,9 +9,13 @@ if (!defined('DB_HOST')) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo isset($page_title) ? h($page_title) . ' - ' : ''; ?>スイムトラッカー</title>
+    <title><?php echo isset($page_title) ? h($page_title) . ' - ' : ''; ?>SwimLog</title>
     <meta name="description" content="水泳の練習を記録・分析し、成長をサポートするアプリです。">
     <meta name="csrf-token" content="<?php echo h(generateCsrfToken()); ?>">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="assets/images/logo.png" type="image/png">
+    <link rel="apple-touch-icon" href="assets/images/logo.png">
     
     <!-- Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -28,8 +32,8 @@ if (!defined('DB_HOST')) {
         <div class="container mx-auto px-4 py-3">
             <div class="flex justify-between items-center">
                 <div class="flex items-center">
-                    <i class="fas fa-swimming-pool text-2xl mr-2"></i>
-                    <a href="index.php" class="text-xl font-bold">スイムトラッカー</a>
+                    <img src="assets/images/logo.png" alt="SwimLog" class="h-8 mr-2">
+                    <a href="index.php" class="text-xl font-bold">SwimLog</a>
                 </div>
                 
                 <?php include __DIR__ . '/navbar.php'; ?>
