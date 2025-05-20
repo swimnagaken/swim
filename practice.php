@@ -2378,6 +2378,8 @@ function updateSetIndexes() {
     </div>
 <?php endif; ?>
 
+<script src="assets/js/practice_sets.js"></script>
+
 <?php
 // フッターの読み込み
 include 'includes/footer.php';
