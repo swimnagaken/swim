@@ -52,3 +52,20 @@ input:focus, textarea:focus, select:focus {
 .notification {
     animation: fadeIn 0.3s ease-out;
 }
+
+/* ドロップダウンメニュー関連のスタイル追加 */
+#user-dropdown {
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ホバーエフェクトの改善 */
+#user-dropdown a:hover {
+    background-color: #3b82f6;
+    color: white;
+    transition: all 0.2s ease;
+}

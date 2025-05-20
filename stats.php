@@ -17,7 +17,7 @@ $currentMonth = date('n');
 
 // GETパラメータから年月を取得（指定がなければ現在の年月）
 $year = isset($_GET['year']) ? (int)$_GET['year'] : $currentYear;
-$month = isset($_GET['view']) && $_GET['view'] === 'month' ? (isset($_GET['month']) ? (int)$_GET['month'] : $currentMonth) : null;
+$month = isset($_GET['view']) && $_GET['view'] === 'month' ? (isset($_GET['month']) ? (int)$_GET['month'] : $currentMonth) : $currentMonth;
 
 // 有効な年をチェック
 if ($year < 2000 || $year > 2100) {
@@ -440,11 +440,14 @@ include 'includes/header.php';
                         'other' => 'その他'
                     ];
                     
-                    foreach ($stats['stroke_data'] as $stroke): 
-                        $percentage = round(($stroke['stroke_distance'] / $stats['total_distance']) * 100);
-                    ?>
-                    <tr class="border-b">
-                        <td class="py-3 px-4"><?php echo h($strokeNames[$stroke['stroke_type']] ?? $stroke['stroke_type']); ?></td>
+                    // この内容に変更
+foreach ($stats['stroke_data'] as $stroke): 
+    // stroke_typeキーが存在して空でないことを確認
+    $stroke_type = isset($stroke['stroke_type']) && !empty($stroke['stroke_type']) ? $stroke['stroke_type'] : 'other';
+    $percentage = round(($stroke['stroke_distance'] / $stats['total_distance']) * 100);
+?>
+<tr class="border-b">
+    <td class="py-3 px-4"><?php echo h($strokeNames[$stroke_type] ?? $stroke_type); ?></td>
                         <td class="py-3 px-4"><?php echo number_format($stroke['stroke_distance']); ?> m</td>
                         <td class="py-3 px-4">
                             <div class="flex items-center">

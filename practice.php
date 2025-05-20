@@ -288,8 +288,8 @@ include 'includes/header.php';
                             <?php for ($i = 1; $i <= 5; $i++): ?>
                             <label class="flex items-center cursor-pointer">
                                 <input type="radio" name="feeling" value="<?php echo $i; ?>" class="hidden peer" <?php echo $i === 3 ? 'checked' : ''; ?>>
-                                <span class="text-2xl text-gray-300 hover:text-yellow-500 peer-checked:text-yellow-500">
-                                    <?php echo $i <= 2 ? '😞' : ($i === 3 ? '😐' : '😊'); ?>
+                                <span class="<?php echo $i === 3 ? 'text-blue-500 font-medium' : ''; ?>">
+                                 <?php echo $i; ?>
                                 </span>
                             </label>
                             <?php endfor; ?>
@@ -1063,8 +1063,7 @@ include 'includes/header.php';
                 <p class="font-medium">
                     <?php 
                     if ($practice['feeling']) {
-                        $feelingEmojis = [1 => '😞', 2 => '😞', 3 => '😐', 4 => '😊', 5 => '😊'];
-                        echo $feelingEmojis[$practice['feeling']];
+                        echo $practice['feeling'] . ' / 5';
                     } else {
                         echo '-';
                     }
@@ -1405,9 +1404,9 @@ include 'includes/header.php';
                                     class="hidden peer" 
                                     <?php echo $practice['feeling'] == $i ? 'checked' : ''; ?>
                                 >
-                                <span class="text-2xl text-gray-300 hover:text-yellow-500 peer-checked:text-yellow-500">
-                                    <?php echo $i <= 2 ? '😞' : ($i === 3 ? '😐' : '😊'); ?>
-                                </span>
+                                <span class="<?php echo $i === 3 ? 'text-blue-500 font-medium' : ''; ?>">
+                <?php echo $i; ?>
+            </span>
                             </label>
                             <?php endfor; ?>
                         </div>
@@ -2302,8 +2301,7 @@ function updateSetIndexes() {
                         <td class="py-3 px-4 whitespace-nowrap">
                             <?php 
                             if ($practice['feeling']) {
-                                $feelingEmojis = [1 => '😞', 2 => '😞', 3 => '😐', 4 => '😊', 5 => '😊'];
-                                echo $feelingEmojis[$practice['feeling']];
+                                echo $practice['feeling'] . ' / 5';
                             } else {
                                 echo '-';
                             }

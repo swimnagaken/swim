@@ -11,7 +11,7 @@
                 <span><?php echo h($_SESSION['username']); ?></span>
                 <i class="fas fa-chevron-down ml-1 text-xs"></i>
             </button>
-            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
+            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block" id="user-dropdown">
                 <a href="profile.php" class="block px-4 py-2 text-gray-800 hover:bg-blue-500 hover:text-white">
                     <i class="fas fa-user mr-2"></i>プロフィール
                 </a>

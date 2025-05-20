@@ -25,6 +25,9 @@ if (!defined('DB_HOST')) {
     
     <!-- カスタムスタイル -->
     <link href="assets/css/style.css" rel="stylesheet">
+    
+    <!-- ヘッダードロップダウン制御用スクリプト -->
+    <script src="assets/js/header.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
     <!-- ヘッダー -->
