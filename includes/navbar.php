@@ -11,12 +11,9 @@
                 <span><?php echo h($_SESSION['username']); ?></span>
                 <i class="fas fa-chevron-down ml-1 text-xs"></i>
             </button>
-            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block" id="user-dropdown">
+            <div id="user-dropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden">
                 <a href="profile.php" class="block px-4 py-2 text-gray-800 hover:bg-blue-500 hover:text-white">
                     <i class="fas fa-user mr-2"></i>プロフィール
-                </a>
-                <a href="settings.php" class="block px-4 py-2 text-gray-800 hover:bg-blue-500 hover:text-white">
-                    <i class="fas fa-cog mr-2"></i>設定
                 </a>
                 <div class="border-t border-gray-200 my-1"></div>
                 <a href="logout.php" class="block px-4 py-2 text-gray-800 hover:bg-blue-500 hover:text-white">
@@ -44,7 +41,6 @@
             <a href="competition.php" class="hover:text-blue-200 transition">大会記録</a>
             <a href="stats.php" class="hover:text-blue-200 transition">統計</a>
             <a href="profile.php" class="hover:text-blue-200 transition">プロフィール</a>
-            <a href="settings.php" class="hover:text-blue-200 transition">設定</a>
             <a href="logout.php" class="hover:text-blue-200 transition">ログアウト</a>
         <?php else: ?>
             <a href="login.php" class="hover:text-blue-200 transition">ログイン</a>

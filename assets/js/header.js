@@ -2,14 +2,20 @@
 document.addEventListener('DOMContentLoaded', function() {
     // ユーザードロップダウンの改善
     const userDropdownButton = document.querySelector('.group > button');
-    const userDropdownMenu = document.querySelector('.group > .absolute');
+    const userDropdownMenu = document.getElementById('user-dropdown');
     
     if (userDropdownButton && userDropdownMenu) {
         // クリックイベントでの切り替え
         userDropdownButton.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            userDropdownMenu.classList.toggle('hidden');
+            
+            // hidden クラスの有無を確認して切り替え
+            if (userDropdownMenu.classList.contains('hidden')) {
+                userDropdownMenu.classList.remove('hidden');
+            } else {
+                userDropdownMenu.classList.add('hidden');
+            }
         });
         
         // 外部クリックで閉じる

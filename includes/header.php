@@ -27,7 +27,9 @@ if (!defined('DB_HOST')) {
     <link href="assets/css/style.css" rel="stylesheet">
     
     <!-- ヘッダードロップダウン制御用スクリプト -->
-    <script src="assets/js/header.js"></script>
+    <!-- JavaScriptファイル -->
+<script src="assets/js/main.js" defer></script>
+<script src="assets/js/header.js" defer></script>
 </head>
 <body class="bg-gray-100 font-sans">
     <!-- ヘッダー -->

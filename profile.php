@@ -8,7 +8,7 @@ $page_title = "プロフィール";
 // ログイン必須
 requireLogin();
 
-// アクションの取得（view, edit, update）
+// アクションの取得（view, edit, update, update_username, update_goal）
 $action = isset($_GET['action']) ? $_GET['action'] : 'view';
 
 // ユーザー情報の取得
@@ -78,6 +78,51 @@ try {
     }
 } catch (PDOException $e) {
     error_log('月間統計取得エラー: ' . $e->getMessage());
+}
+
+// ユーザー名変更処理
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'update_username') {
+    // CSRFトークン検証
+    if (!isset($_POST['csrf_token']) || !validateCsrfToken($_POST['csrf_token'])) {
+        $_SESSION['error_messages'][] = '無効なリクエストです。ページを再読み込みしてください。';
+    } else {
+        $new_username = trim($_POST['new_username'] ?? '');
+        
+        if (empty($new_username)) {
+            $_SESSION['error_messages'][] = 'ユーザー名を入力してください。';
+        } elseif (strlen($new_username) < 3 || strlen($new_username) > 20) {
+            $_SESSION['error_messages'][] = 'ユーザー名は3～20文字で入力してください。';
+        } else {
+            try {
+                $db = getDbConnection();
+                
+                // ユーザー名の重複チェック
+                $stmt = $db->prepare("SELECT COUNT(*) FROM users WHERE username = ? AND user_id != ?");
+                $stmt->execute([$new_username, $userId]);
+                
+                if ($stmt->fetchColumn() > 0) {
+                    $_SESSION['error_messages'][] = 'このユーザー名は既に使用されています。';
+                } else {
+                    // ユーザー名を更新
+                    $stmt = $db->prepare("UPDATE users SET username = ? WHERE user_id = ?");
+                    $stmt->execute([$new_username, $userId]);
+                    
+                    // セッションのユーザー名も更新
+                    $_SESSION['username'] = $new_username;
+                    $username = $new_username;
+                    
+                    $_SESSION['success_messages'][] = 'ユーザー名が正常に更新されました。';
+                    
+                    // 元のページにリダイレクト
+                    header('Location: profile.php');
+                    exit;
+                }
+            } catch (PDOException $e) {
+                error_log('ユーザー名更新エラー: ' . $e->getMessage());
+                $_SESSION['error_messages'][] = 'ユーザー名の更新中にエラーが発生しました。';
+            }
+        }
+    }
 }
 
 // パスワード変更処理
@@ -204,9 +249,12 @@ include 'includes/header.php';
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-semibold">ユーザー情報</h2>
+                <button type="button" id="toggle-username-form" class="text-blue-600 hover:text-blue-800">
+                    <i class="fas fa-edit mr-1"></i> 編集
+                </button>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div id="user-info-display" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <p class="text-gray-600 text-sm">ユーザー名</p>
                     <p class="font-medium"><?php echo h($username); ?></p>
@@ -231,6 +279,40 @@ include 'includes/header.php';
                     <p class="text-gray-600 text-sm">累計練習距離</p>
                     <p class="font-medium"><?php echo number_format($stats['total_distance']); ?> m</p>
                 </div>
+            </div>
+            
+            <!-- ユーザー名変更フォーム -->
+            <div id="username-change-form" class="mt-4 hidden">
+                <h3 class="text-lg font-semibold mb-4">ユーザー名変更</h3>
+                
+                <form method="POST" action="profile.php?action=update_username">
+                    <input type="hidden" name="csrf_token" value="<?php echo h(generateCsrfToken()); ?>">
+                    
+                    <div class="mb-4">
+                        <label for="new_username" class="block text-gray-700 mb-2">新しいユーザー名</label>
+                        <input 
+                            type="text" 
+                            id="new_username" 
+                            name="new_username" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value="<?php echo h($username); ?>"
+                            required
+                            minlength="3"
+                            maxlength="20"
+                        >
+                        <p class="text-gray-500 text-sm mt-1">3〜20文字で入力してください</p>
+                    </div>
+                    
+                    <div class="flex justify-end">
+                        <button type="button" id="cancel-username-change" class="mr-3 text-gray-600 hover:text-gray-800">
+                            キャンセル
+                        </button>
+                        
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">
+                            ユーザー名を変更する
+                        </button>
+                    </div>
+                </form>
             </div>
             
             <div class="mt-8">
@@ -423,6 +505,28 @@ include 'includes/header.php';
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // ユーザー名変更フォームの表示/非表示
+    const toggleUsernameForm = document.getElementById('toggle-username-form');
+    const usernameForm = document.getElementById('username-change-form');
+    const userInfoDisplay = document.getElementById('user-info-display');
+    const cancelUsernameChange = document.getElementById('cancel-username-change');
+    
+    if (toggleUsernameForm && usernameForm && userInfoDisplay) {
+        toggleUsernameForm.addEventListener('click', function() {
+            usernameForm.classList.remove('hidden');
+            toggleUsernameForm.classList.add('hidden');
+            userInfoDisplay.classList.add('opacity-50');
+        });
+    }
+    
+    if (cancelUsernameChange && usernameForm && userInfoDisplay && toggleUsernameForm) {
+        cancelUsernameChange.addEventListener('click', function() {
+            usernameForm.classList.add('hidden');
+            toggleUsernameForm.classList.remove('hidden');
+            userInfoDisplay.classList.remove('opacity-50');
+        });
+    }
+    
     // パスワード変更フォームの表示/非表示
     const togglePasswordForm = document.getElementById('toggle-password-form');
     const passwordForm = document.getElementById('password-change-form');
