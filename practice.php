@@ -283,18 +283,18 @@ include 'includes/header.php';
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- 調子 -->
                     <div>
-                        <label class="block text-gray-700 mb-2" for="feeling">調子</label>
-                        <div class="flex items-center space-x-1">
-                            <?php for ($i = 1; $i <= 5; $i++): ?>
-                            <label class="flex items-center cursor-pointer">
-                                <input type="radio" name="feeling" value="<?php echo $i; ?>" class="hidden peer" <?php echo $i === 3 ? 'checked' : ''; ?>>
-                                <span class="<?php echo $i === 3 ? 'text-blue-500 font-medium' : ''; ?>">
-                                 <?php echo $i; ?>
-                                </span>
-                            </label>
-                            <?php endfor; ?>
-                        </div>
-                    </div>
+    <label class="block text-gray-700 mb-2" for="feeling">調子（1:悪い ～ 5:良い）</label>
+    <div class="flex items-center space-x-1">
+        <?php for ($i = 1; $i <= 5; $i++): ?>
+        <label class="flex items-center cursor-pointer">
+            <input type="radio" name="feeling" value="<?php echo $i; ?>" class="hidden peer" <?php echo $i === 3 ? 'checked' : ''; ?>>
+            <span class="<?php echo $i === 3 ? 'text-blue-500 font-medium' : ''; ?>">
+             <?php echo $i; ?>
+            </span>
+        </label>
+        <?php endfor; ?>
+    </div>
+</div>
                     
                     <!-- 次回練習予定 -->
                     <div>
@@ -1393,24 +1393,18 @@ include 'includes/header.php';
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- 調子 -->
                     <div>
-                        <label class="block text-gray-700 mb-2" for="feeling">調子</label>
-                        <div class="flex items-center space-x-1">
-                            <?php for ($i = 1; $i <= 5; $i++): ?>
-                            <label class="flex items-center cursor-pointer">
-                                <input 
-                                    type="radio" 
-                                    name="feeling" 
-                                    value="<?php echo $i; ?>" 
-                                    class="hidden peer" 
-                                    <?php echo $practice['feeling'] == $i ? 'checked' : ''; ?>
-                                >
-                                <span class="<?php echo $i === 3 ? 'text-blue-500 font-medium' : ''; ?>">
-                <?php echo $i; ?>
+    <label class="block text-gray-700 mb-2" for="feeling">調子（1:悪い ～ 5:良い）</label>
+    <div class="flex items-center space-x-1">
+        <?php for ($i = 1; $i <= 5; $i++): ?>
+        <label class="flex items-center cursor-pointer">
+            <input type="radio" name="feeling" value="<?php echo $i; ?>" class="hidden peer" <?php echo $i === 3 ? 'checked' : ''; ?>>
+            <span class="<?php echo $i === 3 ? 'text-blue-500 font-medium' : ''; ?>">
+             <?php echo $i; ?>
             </span>
-                            </label>
-                            <?php endfor; ?>
-                        </div>
-                    </div>
+        </label>
+        <?php endfor; ?>
+    </div>
+</div>
                     
                     <!-- 次回練習予定 -->
                     <div>
@@ -2377,7 +2371,9 @@ function updateSetIndexes() {
 <?php endif; ?>
 
 <script src="assets/js/practice_sets.js"></script>
-
+<script src="assets/js/practice_improvements.js"></script>
+<!-- 種別・器具管理リンク修正スクリプト -->
+<script src="assets/js/equipment_link_fix.js"></script>
 <?php
 // フッターの読み込み
 include 'includes/footer.php';
