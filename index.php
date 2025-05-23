@@ -756,7 +756,7 @@ if (isLoggedIn()) {
                     </div>
                 </div>
                 <div class="md:w-1/2">
-                    <img src="https://source.unsplash.com/random/600x400/?swimming" alt="水泳選手のイメージ" class="w-full max-w-md mx-auto rounded-lg shadow-lg">
+                    <img src="assets/images/demo.png" alt="水泳選手のイメージ" class="w-full max-w-md mx-auto rounded-lg shadow-lg">
                 </div>
             </div>
         </div>
@@ -817,17 +817,39 @@ if (isLoggedIn()) {
         </div>
     </section>
 
-    <!-- 運営会社情報 -->
-    <section class="py-12 bg-gray-50">
-        <div class="container mx-auto px-6 text-center">
-            <h2 class="text-2xl font-bold mb-4">運営会社</h2>
-            <p class="text-lg mb-2">Cre.eight12</p>
-            <p class="text-gray-600 mb-4">水泳に関するサービスを提供します。</p>
-            <p class="text-sm text-gray-500">
-                お問い合わせは <a href="mailto:cre.eight12@gmail.com" class="text-blue-600 hover:underline">cre.eight12@gmail.com</a> までお願いします。
-            </p>
+
+<!-- スポンサー募集セクション 
+<section class="py-12 bg-blue-50">
+    <div class="container mx-auto px-6">
+        <div class="max-w-3xl mx-auto text-center">
+            <h2 class="text-2xl font-bold mb-4">スポンサー募集</h2>
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <p class="mb-4">SwimLogは完全無料で提供しています。サービスの継続・発展のため、スポンサーを募集しています。</p>
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                    <p class="text-yellow-700">
+                        <span class="font-bold">スポンサー特典：</span> 
+                        バナー広告掲載、スポンサーページでの紹介、メール通知へのロゴ掲載など
+                    </p>
+                </div>
+                <a href="mailto:cre.eight12@gmail.com?subject=SwimLogスポンサーについて" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg inline-flex items-center">
+                    <i class="fas fa-envelope mr-2"></i> スポンサーについてお問い合わせ
+                </a>
+            </div>
         </div>
-    </section>
+    </div>
+</section>
+-->
+
+   <!-- 運営情報 -->
+<section class="py-12 bg-gray-50">
+    <div class="container mx-auto px-6 text-center">
+        <h2 class="text-2xl font-bold mb-4">運営</h2>
+        <p class="text-lg mb-2">Cre.eight12（新潟県長岡市）</p>
+        <p class="text-sm text-gray-500">
+            お問い合わせは <a href="mailto:cre.eight12@gmail.com" class="text-blue-600 hover:underline">cre.eight12@gmail.com</a> までお願いします。
+        </p>
+    </div>
+</section>
 
     <?php
     

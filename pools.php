@@ -205,7 +205,7 @@ include 'includes/header.php';
                 >
             </div>
             
-            <!-- 場所 -->
+            <!-- 所在地 -->
             <div>
                 <label class="block text-gray-700 mb-2" for="location">場所</label>
                 <input
@@ -217,19 +217,17 @@ include 'includes/header.php';
             </div>
             
             <!-- プール長 -->
-            <div>
-                <label class="block text-gray-700 mb-2" for="pool_length">プール長さ (m)</label>
-                <select
-                    id="pool_length"
-                    name="pool_length"
-                    class="w-full border border-gray-300 rounded-md px-3 py-2"
-                >
-                    <option value="25" selected>25m</option>
-                    <option value="50">50m</option>
-                    <option value="20">20m</option>
-                    <option value="15">15m</option>
-                </select>
-            </div>
+<div>
+    <label class="block text-gray-700 mb-2" for="pool_length">プール長さ (m)</label>
+    <select
+        id="pool_length"
+        name="pool_length"
+        class="w-full border border-gray-300 rounded-md px-3 py-2"
+    >
+        <option value="25" selected>短水路 (25m)</option>
+        <option value="50">長水路 (50m)</option>
+    </select>
+</div>
             
             <!-- お気に入り -->
             <div class="flex items-center mt-8">
