@@ -1,82 +1,67 @@
-// enhanced_competition_form.js - 改良版大会記録フォーム
+// assets/js/competition_form.js - 統合版大会記録フォーム
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("改良版大会記録フォームを初期化します");
+    console.log("統合版大会記録フォームを初期化します");
     
-    // フォーム要素の取得
-    const poolTypeSelect = document.getElementById('pool_type');
-    const strokeTypeSelect = document.getElementById('stroke_type');
-    const distanceSelect = document.getElementById('distance_meters');
-    const finalTimeInput = document.getElementById('final_time');
-    const reactionTimeInput = document.getElementById('reaction_time');
-    const lapInputMethodSelect = document.getElementById('lap_input_method');
-    const lapTimesContainer = document.getElementById('lap_times_container');
-    const isOfficialCheckbox = document.getElementById('is_official');
-    const recordTypeSelect = document.getElementById('record_type');
+    // 距離設定（泳法・プール種別別）
+    const distanceOptions = {
+        'butterfly': { 'SCM': [50, 100, 200], 'LCM': [50, 100, 200] },
+        'backstroke': { 'SCM': [50, 100, 200], 'LCM': [50, 100, 200] },
+        'breaststroke': { 'SCM': [50, 100, 200], 'LCM': [50, 100, 200] },
+        'freestyle': { 'SCM': [50, 100, 200, 400, 800, 1500], 'LCM': [50, 100, 200, 400, 800, 1500] },
+        'medley': { 'SCM': [100, 200, 400], 'LCM': [200, 400] } // 100m個人メドレーは短水路のみ
+    };
     
-    // イベント設定データ
-    let eventConfigurations = [];
+    // 追加競技結果カウンター
+    let additionalResultsCount = 0;
     
     // 初期化
     init();
     
     function init() {
-        // 種目設定を読み込み
-        loadEventConfigurations();
-        
-        // イベントリスナーの設定
-        setupEventListeners();
-        
-        // 初期状態の設定
+        setupMainFormEventListeners();
+        setupAdditionalResultsFeature();
         updateDistanceOptions();
         updateLapTimesInput();
     }
     
     /**
-     * 種目設定を読み込む
+     * メインフォームのイベントリスナー設定
      */
-    function loadEventConfigurations() {
-        fetch('api/enhanced_competition.php?action=get_events')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    eventConfigurations = data.events;
-                    console.log('種目設定を読み込みました:', eventConfigurations.length, '件');
-                    updateDistanceOptions();
-                } else {
-                    console.error('種目設定の読み込みに失敗:', data.error);
-                }
-            })
-            .catch(error => {
-                console.error('API呼び出しエラー:', error);
-            });
-    }
-    
-    /**
-     * イベントリスナーの設定
-     */
-    function setupEventListeners() {
-        // プール種別変更時
+    function setupMainFormEventListeners() {
+        // プール種別・泳法変更時
+        const poolTypeSelect = document.getElementById('pool_type');
+        const strokeTypeSelect = document.getElementById('stroke_type');
+        const distanceSelect = document.getElementById('distance_meters');
+        
         if (poolTypeSelect) {
-            poolTypeSelect.addEventListener('change', updateDistanceOptions);
+            poolTypeSelect.addEventListener('change', function() {
+                updateDistanceOptions();
+                updateLapTimesInput();
+            });
         }
         
-        // 泳法変更時
         if (strokeTypeSelect) {
-            strokeTypeSelect.addEventListener('change', updateDistanceOptions);
+            strokeTypeSelect.addEventListener('change', function() {
+                updateDistanceOptions();
+                updateLapTimesInput();
+            });
         }
         
-        // 距離変更時
         if (distanceSelect) {
             distanceSelect.addEventListener('change', updateLapTimesInput);
         }
         
         // ラップ入力方式変更時
-        if (lapInputMethodSelect) {
-            lapInputMethodSelect.addEventListener('change', updateLapTimesInput);
-        }
+        const lapMethodRadios = document.querySelectorAll('input[name="lap_input_method"]');
+        lapMethodRadios.forEach(radio => {
+            radio.addEventListener('change', updateLapTimesInput);
+        });
         
-        // タイム入力フィールドのフォーマット検証
+        // タイム入力フィールドの検証
+        const finalTimeInput = document.getElementById('final_time');
+        const reactionTimeInput = document.getElementById('reaction_time');
+        
         if (finalTimeInput) {
             finalTimeInput.addEventListener('blur', validateTimeFormat);
             finalTimeInput.addEventListener('input', previewFormattedTime);
@@ -86,66 +71,165 @@ document.addEventListener('DOMContentLoaded', function() {
             reactionTimeInput.addEventListener('blur', validateTimeFormat);
         }
         
-        // 公式記録チェックボックス
-        if (isOfficialCheckbox) {
-            isOfficialCheckbox.addEventListener('change', updateRecordTypeOptions);
-        }
-        
         // フォーム送信時の検証
-        const form = document.getElementById('competition-result-form');
+        const form = document.getElementById('unified-competition-form');
         if (form) {
-            form.addEventListener('submit', validateFormBeforeSubmit);
+            form.addEventListener('submit', validateUnifiedFormBeforeSubmit);
         }
     }
     
     /**
-     * 距離オプションを更新
+     * 追加競技結果機能の設定
      */
-    function updateDistanceOptions() {
-        if (!poolTypeSelect || !strokeTypeSelect || !distanceSelect) return;
+    function setupAdditionalResultsFeature() {
+        const addMoreButton = document.getElementById('add-more-results');
+        const container = document.getElementById('additional-results-container');
+        const template = document.getElementById('additional-result-template');
         
+        if (!addMoreButton || !container || !template) return;
+        
+        addMoreButton.addEventListener('click', function() {
+            additionalResultsCount++;
+            addAdditionalResult();
+        });
+        
+        function addAdditionalResult() {
+            const templateContent = template.content.cloneNode(true);
+            const resultItem = templateContent.querySelector('.additional-result-item');
+            
+            // インデックスの置換
+            const index = additionalResultsCount;
+            resultItem.innerHTML = resultItem.innerHTML.replace(/INDEX/g, index);
+            
+            // 競技番号の更新
+            const resultNumber = resultItem.querySelector('.result-number');
+            if (resultNumber) {
+                resultNumber.textContent = index + 1;
+            }
+            
+            // 削除ボタンのイベントリスナー
+            const removeButton = resultItem.querySelector('.remove-result');
+            if (removeButton) {
+                removeButton.addEventListener('click', function() {
+                    if (confirm('この競技結果を削除してもよろしいですか？')) {
+                        resultItem.remove();
+                        updateResultNumbers();
+                    }
+                });
+            }
+            
+            container.appendChild(resultItem);
+            
+            // 新しい要素のイベントリスナーを設定
+            setupAdditionalResultEventListeners(resultItem, index);
+            
+            // 新しい要素にスクロール
+            resultItem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        function updateResultNumbers() {
+            const resultItems = container.querySelectorAll('.additional-result-item');
+            resultItems.forEach((item, index) => {
+                const numberSpan = item.querySelector('.result-number');
+                if (numberSpan) {
+                    numberSpan.textContent = index + 2; // メイン結果が1なので+2
+                }
+            });
+        }
+    }
+    
+    /**
+     * 追加競技結果のイベントリスナー設定
+     */
+    function setupAdditionalResultEventListeners(resultItem, index) {
+        const poolTypeSelect = resultItem.querySelector('.pool-type-select');
+        const strokeTypeSelect = resultItem.querySelector('.stroke-type-select');
+        const distanceSelect = resultItem.querySelector('.distance-select');
+        
+        if (poolTypeSelect && strokeTypeSelect && distanceSelect) {
+            poolTypeSelect.addEventListener('change', function() {
+                updateAdditionalDistanceOptions(poolTypeSelect, strokeTypeSelect, distanceSelect);
+            });
+            
+            strokeTypeSelect.addEventListener('change', function() {
+                updateAdditionalDistanceOptions(poolTypeSelect, strokeTypeSelect, distanceSelect);
+            });
+        }
+        
+        // タイム入力の検証
+        const timeInputs = resultItem.querySelectorAll('input[pattern]');
+        timeInputs.forEach(input => {
+            input.addEventListener('blur', validateTimeFormat);
+        });
+    }
+    
+    /**
+     * 追加競技結果の距離オプション更新
+     */
+    function updateAdditionalDistanceOptions(poolTypeSelect, strokeTypeSelect, distanceSelect) {
         const poolType = poolTypeSelect.value;
         const strokeType = strokeTypeSelect.value;
-        
-        console.log(`距離オプション更新: pool=${poolType}, stroke=${strokeType}`);
         
         // 現在の選択をクリア
         distanceSelect.innerHTML = '<option value="">距離を選択</option>';
         
         if (!poolType || !strokeType) return;
         
-        // 該当する種目設定を絞り込み
-        const validDistances = eventConfigurations
-            .filter(config => config.pool_type === poolType && config.stroke_type === strokeType)
-            .map(config => ({
-                distance: config.distance_meters,
-                display: config.display_name
-            }))
-            .sort((a, b) => a.distance - b.distance);
+        // 距離オプションを追加
+        const distances = distanceOptions[strokeType] && distanceOptions[strokeType][poolType] ? 
+                         distanceOptions[strokeType][poolType] : [];
         
-        console.log('有効な距離:', validDistances);
-        
-        // オプションを追加
-        validDistances.forEach(item => {
+        distances.forEach(distance => {
             const option = document.createElement('option');
-            option.value = item.distance;
-            option.textContent = `${item.distance}m`;
+            option.value = distance;
+            option.textContent = `${distance}m`;
             distanceSelect.appendChild(option);
         });
+    }
+    
+    /**
+     * メイン競技の距離オプション更新
+     */
+    function updateDistanceOptions() {
+        const poolTypeSelect = document.getElementById('pool_type');
+        const strokeTypeSelect = document.getElementById('stroke_type');
+        const distanceSelect = document.getElementById('distance_meters');
         
-        // 距離が選択されたらラップタイム入力を更新
-        updateLapTimesInput();
+        if (!poolTypeSelect || !strokeTypeSelect || !distanceSelect) return;
+        
+        const poolType = poolTypeSelect.value;
+        const strokeType = strokeTypeSelect.value;
+        
+        // 現在の選択をクリア
+        distanceSelect.innerHTML = '<option value="">距離を選択</option>';
+        
+        if (!poolType || !strokeType) return;
+        
+        // 距離オプションを追加
+        const distances = distanceOptions[strokeType] && distanceOptions[strokeType][poolType] ? 
+                         distanceOptions[strokeType][poolType] : [];
+        
+        distances.forEach(distance => {
+            const option = document.createElement('option');
+            option.value = distance;
+            option.textContent = `${distance}m`;
+            distanceSelect.appendChild(option);
+        });
     }
     
     /**
      * ラップタイム入力欄を更新
      */
     function updateLapTimesInput() {
+        const lapTimesContainer = document.getElementById('lap_times_container');
+        const distanceSelect = document.getElementById('distance_meters');
+        const poolTypeSelect = document.getElementById('pool_type');
+        
         if (!lapTimesContainer || !distanceSelect || !poolTypeSelect) return;
         
         const distance = parseInt(distanceSelect.value);
         const poolType = poolTypeSelect.value;
-        const inputMethod = lapInputMethodSelect ? lapInputMethodSelect.value : 'split';
+        const inputMethod = document.querySelector('input[name="lap_input_method"]:checked')?.value || 'split';
         
         // コンテナをクリア
         lapTimesContainer.innerHTML = '';
@@ -157,12 +241,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const numberOfLaps = distance / lapDistance;
         
         if (!Number.isInteger(numberOfLaps) || numberOfLaps <= 1) {
-            // ラップタイム入力不要な場合
             lapTimesContainer.innerHTML = '<p class="text-gray-500 text-sm">この種目ではラップタイムの入力は不要です。</p>';
             return;
         }
-        
-        console.log(`ラップタイム入力欄生成: ${numberOfLaps}ラップ, ${lapDistance}m間隔, 方式=${inputMethod}`);
         
         // ヘッダーを追加
         const header = document.createElement('div');
@@ -193,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     type="text" 
                     name="lap_times[]"
                     placeholder="${inputMethod === 'split' ? '26.50' : (i === 1 ? '26.50' : '54.80')}"
-                    pattern="^(\d{1,2}:)?\d{1,2}\.\d{2}$"
+                    pattern="^(\\d{1,2}:)?\\d{1,2}\\.\\d{2}$"
                     title="タイム形式: 秒.1/100秒 または 分:秒.1/100秒"
                     class="lap-time-input w-full text-sm border border-gray-300 rounded px-2 py-1"
                     data-lap="${i}"
@@ -205,7 +286,17 @@ document.addEventListener('DOMContentLoaded', function() {
         
         lapTimesContainer.appendChild(inputsContainer);
         
-        // ラップタイム入力欄にもイベントリスナーを追加
+        // 一貫性分析表示エリアを追加
+        const consistencyDiv = document.createElement('div');
+        consistencyDiv.id = 'lap_consistency';
+        lapTimesContainer.appendChild(consistencyDiv);
+        
+        // プレビューエリアを追加
+        const previewDiv = document.createElement('div');
+        previewDiv.id = 'lap-preview';
+        lapTimesContainer.appendChild(previewDiv);
+        
+        // ラップタイム入力欄にイベントリスナーを追加
         setupLapTimeValidation();
     }
     
@@ -222,10 +313,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             input.addEventListener('input', function() {
-                // リアルタイムで入力方式の相互変換
-                if (this.value && lapInputMethodSelect) {
-                    updateLapTimePreview();
-                }
+                updateLapTimePreview();
             });
         });
     }
@@ -235,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function validateTimeFormat() {
         const timeValue = this.value.trim();
-        if (!timeValue) return; // 空の場合はスキップ
+        if (!timeValue) return;
         
         const timePattern = /^(\d{1,2}:)?\d{1,2}\.\d{2}$/;
         
@@ -245,8 +333,6 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             this.classList.remove('border-red-500');
             hideFieldError(this);
-            
-            // 正しい形式の場合、値を正規化
             this.value = normalizeTimeFormat(timeValue);
         }
     }
@@ -255,7 +341,6 @@ document.addEventListener('DOMContentLoaded', function() {
      * タイム形式の正規化
      */
     function normalizeTimeFormat(timeStr) {
-        // 1/100秒が1桁の場合は0埋め
         const parts = timeStr.split('.');
         if (parts[1] && parts[1].length === 1) {
             parts[1] = parts[1] + '0';
@@ -267,20 +352,25 @@ document.addEventListener('DOMContentLoaded', function() {
      * フォーマット済みタイムのプレビュー
      */
     function previewFormattedTime() {
+        const finalTimeInput = document.getElementById('final_time');
         if (!finalTimeInput) return;
         
         const timeValue = finalTimeInput.value.trim();
-        const preview = document.getElementById('time-preview');
+        let preview = document.getElementById('time-preview');
+        
+        if (!preview) {
+            preview = document.createElement('div');
+            preview.id = 'time-preview';
+            finalTimeInput.parentNode.appendChild(preview);
+        }
         
         if (timeValue && /^(\d{1,2}:)?\d{1,2}\.\d{1,2}$/.test(timeValue)) {
             const normalized = normalizeTimeFormat(timeValue);
             const centiseconds = parseTimeStringToCentiseconds(normalized);
             
-            if (preview) {
-                preview.textContent = `= ${formatCentisecondsToTime(centiseconds)}`;
-                preview.className = 'text-sm text-green-600 mt-1';
-            }
-        } else if (preview) {
+            preview.textContent = `= ${formatCentisecondsToTime(centiseconds)}`;
+            preview.className = 'text-sm text-green-600 mt-1';
+        } else {
             preview.textContent = '';
         }
     }
@@ -290,14 +380,18 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function calculateConsistency() {
         const lapInputs = document.querySelectorAll('.lap-time-input');
-        const consistencyDiv = document.getElementById('lap-consistency');
+        const consistencyDiv = document.getElementById('lap_consistency');
         
         if (!consistencyDiv || lapInputs.length < 2) return;
         
         const times = [];
         lapInputs.forEach(input => {
             if (input.value.trim()) {
-                times.push(parseTimeStringToCentiseconds(input.value.trim()));
+                try {
+                    times.push(parseTimeStringToCentiseconds(input.value.trim()));
+                } catch (e) {
+                    // 無効なタイムは無視
+                }
             }
         });
         
@@ -306,13 +400,12 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const inputMethod = lapInputMethodSelect ? lapInputMethodSelect.value : 'split';
+        const inputMethod = document.querySelector('input[name="lap_input_method"]:checked')?.value || 'split';
         let lapTimes = [];
         
         if (inputMethod === 'split') {
             lapTimes = times;
         } else {
-            // 累積タイムからラップタイムを計算
             for (let i = 0; i < times.length; i++) {
                 lapTimes.push(i === 0 ? times[i] : times[i] - times[i - 1]);
             }
@@ -339,45 +432,105 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     /**
-     * 記録種別オプションを更新
+     * ラップタイムプレビューを更新
      */
-    function updateRecordTypeOptions() {
-        if (!recordTypeSelect || !isOfficialCheckbox) return;
+    function updateLapTimePreview() {
+        const inputMethod = document.querySelector('input[name="lap_input_method"]:checked')?.value || 'split';
+        const lapInputs = document.querySelectorAll('.lap-time-input');
+        let previewContainer = document.getElementById('lap-preview');
         
-        const isOfficial = isOfficialCheckbox.checked;
+        if (!previewContainer || lapInputs.length === 0) return;
         
-        // オプションをクリア
-        recordTypeSelect.innerHTML = '';
+        const times = [];
+        lapInputs.forEach(input => {
+            if (input.value.trim()) {
+                try {
+                    times.push({
+                        value: input.value.trim(),
+                        centiseconds: parseTimeStringToCentiseconds(input.value.trim()),
+                        distance: parseInt(input.dataset.distance)
+                    });
+                } catch (e) {
+                    // 無効なタイム形式は無視
+                }
+            }
+        });
         
-        if (isOfficial) {
-            recordTypeSelect.innerHTML = `
-                <option value="competition">公式大会</option>
-                <option value="time_trial">公式タイム測定会</option>
-            `;
-        } else {
-            recordTypeSelect.innerHTML = `
-                <option value="practice">練習中の計測</option>
-                <option value="relay_split">リレーのスプリット</option>
-                <option value="time_trial">非公式タイム測定</option>
-            `;
+        if (times.length === 0) {
+            previewContainer.innerHTML = '';
+            return;
         }
+        
+        let previewHtml = '<div class="mt-3 p-3 bg-gray-50 rounded-lg text-sm">';
+        previewHtml += '<h5 class="font-medium mb-2">タイムプレビュー</h5>';
+        previewHtml += '<div class="grid grid-cols-2 gap-4">';
+        
+        if (inputMethod === 'split') {
+            previewHtml += '<div><strong>累積タイム：</strong><br>';
+            let cumulative = 0;
+            times.forEach((time, index) => {
+                cumulative += time.centiseconds;
+                previewHtml += `${time.distance}m: ${formatCentisecondsToTime(cumulative)}<br>`;
+            });
+            previewHtml += '</div>';
+            
+            previewHtml += '<div><strong>ラップタイム：</strong><br>';
+            times.forEach(time => {
+                previewHtml += `${time.distance}m: ${formatCentisecondsToTime(time.centiseconds)}<br>`;
+            });
+            previewHtml += '</div>';
+        } else {
+            previewHtml += '<div><strong>累積タイム：</strong><br>';
+            times.forEach(time => {
+                previewHtml += `${time.distance}m: ${formatCentisecondsToTime(time.centiseconds)}<br>`;
+            });
+            previewHtml += '</div>';
+            
+            previewHtml += '<div><strong>ラップタイム：</strong><br>';
+            times.forEach((time, index) => {
+                const lapTime = index === 0 ? time.centiseconds : time.centiseconds - times[index - 1].centiseconds;
+                previewHtml += `${time.distance}m: ${formatCentisecondsToTime(lapTime)}<br>`;
+            });
+            previewHtml += '</div>';
+        }
+        
+        previewHtml += '</div></div>';
+        previewContainer.innerHTML = previewHtml;
     }
     
     /**
-     * フォーム送信前の検証
+     * 統合フォーム送信前の検証
      */
-    function validateFormBeforeSubmit(event) {
-        console.log('フォーム送信前検証を実行');
+    function validateUnifiedFormBeforeSubmit(event) {
+        console.log('統合フォーム送信前検証を実行');
         
         let isValid = true;
         const errors = [];
         
-        // 必須フィールドの検証
+        // 大会情報の必須フィールド
+        const competitionName = document.getElementById('competition_name');
+        const competitionDate = document.getElementById('competition_date');
+        
+        if (!competitionName || !competitionName.value.trim()) {
+            errors.push('大会名は必須です。');
+            if (competitionName) competitionName.classList.add('border-red-500');
+            isValid = false;
+        }
+        
+        if (!competitionDate || !competitionDate.value) {
+            errors.push('開催日は必須です。');
+            if (competitionDate) competitionDate.classList.add('border-red-500');
+            isValid = false;
+        }
+        
+        // メイン競技結果の必須フィールド
         const requiredFields = [
-            { element: finalTimeInput, name: '最終タイム' },
-            { element: strokeTypeSelect, name: '泳法' },
-            { element: distanceSelect, name: '距離' },
-            { element: poolTypeSelect, name: 'プール種別' }
+            { element: document.getElementById('final_time'), name: '最終タイム' },
+            { element: document.getElementById('stroke_type'), name: '泳法' },
+            { element: document.getElementById('distance_meters'), name: '距離' },
+            { element: document.getElementById('pool_type'), name: 'プール種別' },
+            { element: document.getElementById('event_name'), name: '種目名' },
+            { element: document.getElementById('record_type'), name: '記録種別' }
         ];
         
         requiredFields.forEach(field => {
@@ -393,22 +546,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // タイム形式の検証
-        if (finalTimeInput && finalTimeInput.value) {
-            const timePattern = /^(\d{1,2}:)?\d{1,2}\.\d{2}$/;
-            if (!timePattern.test(finalTimeInput.value.trim())) {
-                errors.push('最終タイムの形式が正しくありません。');
-                finalTimeInput.classList.add('border-red-500');
-                isValid = false;
-            }
-        }
-        
-        // ラップタイムの検証
-        const lapInputs = document.querySelectorAll('.lap-time-input');
-        lapInputs.forEach((input, index) => {
+        const timeInputs = document.querySelectorAll('input[pattern]');
+        timeInputs.forEach((input, index) => {
             if (input.value.trim()) {
-                const timePattern = /^(\d{1,2}:)?\d{1,2}\.\d{2}$/;
-                if (!timePattern.test(input.value.trim())) {
-                    errors.push(`ラップタイム ${index + 1}の形式が正しくありません。`);
+                const pattern = input.getAttribute('pattern');
+                const regex = new RegExp(pattern);
+                if (!regex.test(input.value.trim())) {
+                    errors.push(`タイム入力 ${index + 1}の形式が正しくありません。`);
                     input.classList.add('border-red-500');
                     isValid = false;
                 } else {
@@ -417,10 +561,23 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
+        // 追加競技結果の検証
+        const additionalResults = document.querySelectorAll('.additional-result-item');
+        additionalResults.forEach((item, index) => {
+            const requiredInputs = item.querySelectorAll('[required]');
+            requiredInputs.forEach(input => {
+                if (!input.value.trim()) {
+                    errors.push(`追加競技 ${index + 1}の${input.previousElementSibling.textContent}は必須です。`);
+                    input.classList.add('border-red-500');
+                    isValid = false;
+                } else {
+                    input.classList.remove('border-red-500');
+                }
+            });
+        });
+        
         if (!isValid) {
             event.preventDefault();
-            
-            // エラーメッセージを表示
             showFormErrors(errors);
             
             // 最初のエラーフィールドにフォーカス
@@ -438,11 +595,8 @@ document.addEventListener('DOMContentLoaded', function() {
      * フォームエラーを表示
      */
     function showFormErrors(errors) {
-        // 既存のエラーメッセージを削除
         const existingError = document.querySelector('.form-error-message');
-        if (existingError) {
-            existingError.remove();
-        }
+        if (existingError) existingError.remove();
         
         if (errors.length === 0) return;
         
@@ -455,8 +609,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </ul>
         `;
         
-        // フォームの先頭に挿入
-        const form = document.getElementById('competition-result-form');
+        const form = document.getElementById('unified-competition-form');
         if (form) {
             form.insertBefore(errorDiv, form.firstChild);
             errorDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -467,7 +620,7 @@ document.addEventListener('DOMContentLoaded', function() {
      * フィールドエラーを表示
      */
     function showFieldError(field, message) {
-        hideFieldError(field); // 既存のエラーを削除
+        hideFieldError(field);
         
         const errorDiv = document.createElement('div');
         errorDiv.className = 'field-error text-red-600 text-xs mt-1';
@@ -517,77 +670,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    /**
-     * ラップタイムプレビューを更新
-     */
-    function updateLapTimePreview() {
-        if (!lapInputMethodSelect) return;
-        
-        const inputMethod = lapInputMethodSelect.value;
-        const lapInputs = document.querySelectorAll('.lap-time-input');
-        const previewContainer = document.getElementById('lap-preview');
-        
-        if (!previewContainer || lapInputs.length === 0) return;
-        
-        const times = [];
-        lapInputs.forEach(input => {
-            if (input.value.trim()) {
-                try {
-                    times.push({
-                        value: input.value.trim(),
-                        centiseconds: parseTimeStringToCentiseconds(input.value.trim()),
-                        distance: parseInt(input.dataset.distance)
-                    });
-                } catch (e) {
-                    // 無効なタイム形式は無視
-                }
-            }
-        });
-        
-        if (times.length === 0) {
-            previewContainer.innerHTML = '';
-            return;
-        }
-        
-        // 入力方式に応じてプレビューを生成
-        let previewHtml = '<div class="mt-3 p-3 bg-gray-50 rounded-lg text-sm">';
-        previewHtml += '<h5 class="font-medium mb-2">タイムプレビュー</h5>';
-        previewHtml += '<div class="grid grid-cols-2 gap-4">';
-        
-        if (inputMethod === 'split') {
-            // スプリット入力 → 累積タイム表示
-            previewHtml += '<div><strong>累積タイム：</strong><br>';
-            let cumulative = 0;
-            times.forEach((time, index) => {
-                cumulative += time.centiseconds;
-                previewHtml += `${time.distance}m: ${formatCentisecondsToTime(cumulative)}<br>`;
-            });
-            previewHtml += '</div>';
-            
-            previewHtml += '<div><strong>ラップタイム：</strong><br>';
-            times.forEach(time => {
-                previewHtml += `${time.distance}m: ${formatCentisecondsToTime(time.centiseconds)}<br>`;
-            });
-            previewHtml += '</div>';
-        } else {
-            // 累積入力 → ラップタイム表示
-            previewHtml += '<div><strong>累積タイム：</strong><br>';
-            times.forEach(time => {
-                previewHtml += `${time.distance}m: ${formatCentisecondsToTime(time.centiseconds)}<br>`;
-            });
-            previewHtml += '</div>';
-            
-            previewHtml += '<div><strong>ラップタイム：</strong><br>';
-            times.forEach((time, index) => {
-                const lapTime = index === 0 ? time.centiseconds : time.centiseconds - times[index - 1].centiseconds;
-                previewHtml += `${time.distance}m: ${formatCentisecondsToTime(lapTime)}<br>`;
-            });
-            previewHtml += '</div>';
-        }
-        
-        previewHtml += '</div></div>';
-        previewContainer.innerHTML = previewHtml;
-    }
+    // 既存の関数（進歩グラフ、ラップタイム表示など）はそのまま保持
+    // showProgressChart, showLapTimes, filterResults なども継続使用
+
     
     /**
      * 進歩グラフを表示
@@ -618,7 +703,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.appendChild(modal);
         
         // データを取得してグラフを描画
-        fetch(`api/enhanced_competition.php?action=get_progress_chart&stroke_type=${strokeType}&distance_meters=${distance}&pool_type=${poolType}`)
+        fetch(`api/competition.php?action=get_progress_chart&stroke_type=${strokeType}&distance_meters=${distance}&pool_type=${poolType}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.chart_data.length > 0) {
@@ -657,7 +742,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         const timeData = chartData.map(item => item.time_centiseconds / 100); // 秒単位に変換
-        const personalBestPoints = chartData.filter(item => item.is_personal_best);
         
         // グラフの設定
         new Chart(ctx, {
@@ -794,36 +878,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return recordTypeNames[recordType] || recordType;
     }
     
-    // フォーム送信成功時の処理
-    window.handleFormSuccess = function(response) {
-        console.log('フォーム送信成功:', response);
-        
-        // 成功メッセージを表示
-        const successDiv = document.createElement('div');
-        successDiv.className = 'bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4';
-        successDiv.innerHTML = `
-            <div class="flex items-center">
-                <i class="fas fa-check-circle mr-2"></i>
-                <div>
-                    <strong>${response.message}</strong>
-                    ${response.is_personal_best ? '<br><span class="text-sm">🏆 自己ベスト記録です！</span>' : ''}
-                </div>
-            </div>
-        `;
-        
-        const form = document.getElementById('competition-result-form');
-        if (form) {
-            form.insertBefore(successDiv, form.firstChild);
-            successDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        
-        // 5秒後にリダイレクト
-        setTimeout(() => {
-            const competitionId = new URLSearchParams(window.location.search).get('id');
-            window.location.href = `competition.php?action=view&id=${competitionId}`;
-        }, 2000);
-    };
-    
     // グローバルスコープに関数を公開
     window.enhancedCompetitionForm = {
         validateTimeFormat,
@@ -832,3 +886,114 @@ document.addEventListener('DOMContentLoaded', function() {
         showProgressChart
     };
 });
+
+// ラップタイム表示モーダル
+function showLapTimes(resultId) {
+    // APIからラップタイムデータを取得
+    fetch(`api/competition.php?action=get_lap_times&result_id=${resultId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayLapTimesModal(data.lap_times, data.result_info);
+            } else {
+                alert('ラップタイムの取得に失敗しました。');
+            }
+        })
+        .catch(error => {
+            console.error('ラップタイム取得エラー:', error);
+            alert('ラップタイムデータの取得中にエラーが発生しました。');
+        });
+}
+
+function displayLapTimesModal(lapTimes, resultInfo) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    
+    let lapTableHtml = '<table class="min-w-full text-sm"><thead><tr class="bg-gray-50"><th class="py-2 px-3 text-left">距離</th><th class="py-2 px-3 text-left">ラップタイム</th><th class="py-2 px-3 text-left">スプリット</th></tr></thead><tbody>';
+    
+    lapTimes.forEach((lap, index) => {
+        lapTableHtml += `
+            <tr class="border-b">
+                <td class="py-2 px-3">${lap.distance_meters}m</td>
+                <td class="py-2 px-3 font-medium">${formatTimeFromCentiseconds(lap.lap_time_centiseconds)}</td>
+                <td class="py-2 px-3">${formatTimeFromCentiseconds(lap.split_time_centiseconds)}</td>
+            </tr>
+        `;
+    });
+    
+    lapTableHtml += '</tbody></table>';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">${resultInfo.event_display} - ラップタイム</h3>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-4">
+                <p class="text-sm text-gray-600">最終タイム: <span class="font-medium">${resultInfo.final_time}</span></p>
+            </div>
+            <div class="overflow-x-auto">
+                ${lapTableHtml}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function formatTimeFromCentiseconds(centiseconds) {
+    const minutes = Math.floor(centiseconds / 6000);
+    const seconds = Math.floor((centiseconds % 6000) / 100);
+    const cs = centiseconds % 100;
+    
+    if (minutes > 0) {
+        return `${minutes}:${seconds.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
+    } else {
+        return `${seconds}.${cs.toString().padStart(2, '0')}`;
+    }
+}
+
+// 結果フィルター機能
+function filterResults(type) {
+    const rows = document.querySelectorAll('.result-row');
+    const buttons = document.querySelectorAll('.filter-btn');
+    
+    // ボタンのアクティブ状態更新
+    buttons.forEach(btn => {
+        btn.classList.remove('active', 'bg-blue-500', 'text-white');
+        btn.classList.add('border-gray-300', 'text-gray-700');
+    });
+    
+    event.target.classList.add('active', 'bg-blue-500', 'text-white');
+    event.target.classList.remove('border-gray-300', 'text-gray-700');
+    
+    // 行の表示/非表示
+    rows.forEach(row => {
+        let show = true;
+        
+        switch(type) {
+            case 'official':
+                show = row.dataset.official === 'true';
+                break;
+            case 'personal_best':
+                show = row.dataset.personalBest === 'true';
+                break;
+            case 'all':
+            default:
+                show = true;
+                break;
+        }
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+// エクスポート機能
+function exportResults() {
+    const competitionId = new URLSearchParams(window.location.search).get('id');
+    if (competitionId) {
+        window.open(`api/export_results.php?competition_id=${competitionId}&format=csv`, '_blank');
+    }
+}

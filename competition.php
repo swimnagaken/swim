@@ -1,5 +1,5 @@
 <?php
-// 設定ファイルの読み込み
+// competition.php - 完全版大会記録ページ
 require_once 'config/config.php';
 
 // ページタイトル
@@ -8,135 +8,36 @@ $page_title = "大会記録";
 // ログイン必須
 requireLogin();
 
-// アクションの取得（list, new, view, edit）
+// アクションの取得
 $action = isset($_GET['action']) ? $_GET['action'] : 'list';
 $competitionId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-// 大会記録の保存処理
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_result') {
-    // CSRFトークン検証
-    if (!isset($_POST['csrf_token']) || !validateCsrfToken($_POST['csrf_token'])) {
-        $_SESSION['error_messages'][] = '無効なリクエストです。';
-    } else {
-        $competition_id = (int)($_POST['competition_id'] ?? 0);
-        $event_name = trim($_POST['event_name'] ?? '');
-        $distance = (int)($_POST['distance'] ?? 0);
-        $stroke_type = $_POST['stroke_type'] ?? '';
-        $time_minutes = (int)($_POST['time_minutes'] ?? 0);
-        $time_seconds = (int)($_POST['time_seconds'] ?? 0);
-        $time_milliseconds = (int)($_POST['time_milliseconds'] ?? 0);
-        $is_personal_best = isset($_POST['is_personal_best']) ? 1 : 0;
-        $rank = !empty($_POST['rank']) ? (int)$_POST['rank'] : null;
-        $notes = trim($_POST['notes'] ?? '');
-        
-        // 入力検証
-        if ($competition_id <= 0) {
-            $_SESSION['error_messages'][] = '無効な大会IDです。';
-        } elseif (empty($event_name)) {
-            $_SESSION['error_messages'][] = '種目名は必須です。';
-        } elseif ($distance <= 0) {
-            $_SESSION['error_messages'][] = '距離は正の値で入力してください。';
-        } elseif (empty($stroke_type)) {
-            $_SESSION['error_messages'][] = '泳法を選択してください。';
-        } elseif ($time_minutes < 0 || $time_seconds < 0 || $time_seconds >= 60 || $time_milliseconds < 0 || $time_milliseconds >= 1000) {
-            $_SESSION['error_messages'][] = 'タイムを正しく入力してください。';
-        } else {
-            try {
-                $db = getDbConnection();
-                
-                // 大会の所有権確認
-                $stmt = $db->prepare("SELECT user_id FROM competitions WHERE competition_id = ?");
-                $stmt->execute([$competition_id]);
-                $competition = $stmt->fetch();
-                
-                if (!$competition || $competition['user_id'] != $_SESSION['user_id']) {
-                    $_SESSION['error_messages'][] = '指定された大会が見つからないか、所有権がありません。';
-                } else {
-                    // 競技結果を保存
-                    $stmt = $db->prepare("
-                        INSERT INTO race_results 
-                        (competition_id, event_name, distance, stroke_type, time_minutes, time_seconds, time_milliseconds, is_personal_best, rank, notes, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                    ");
-                    $stmt->execute([
-                        $competition_id,
-                        $event_name,
-                        $distance,
-                        $stroke_type,
-                        $time_minutes,
-                        $time_seconds,
-                        $time_milliseconds,
-                        $is_personal_best,
-                        $rank,
-                        $notes
-                    ]);
-                    
-                    $_SESSION['success_messages'][] = '競技結果が正常に保存されました。';
-                    
-                    // 詳細ページにリダイレクト
-                    header('Location: competition.php?action=view&id=' . $competition_id);
-                    exit;
-                }
-            } catch (PDOException $e) {
-                error_log('競技結果保存エラー: ' . $e->getMessage());
-                $_SESSION['error_messages'][] = '競技結果の保存中にエラーが発生しました。';
-            }
-        }
-    }
-}
-
-// 大会結果の削除処理
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_result') {
-    // CSRFトークン検証
-    if (!isset($_POST['csrf_token']) || !validateCsrfToken($_POST['csrf_token'])) {
-        $_SESSION['error_messages'][] = '無効なリクエストです。';
-    } else {
-        $result_id = (int)($_POST['result_id'] ?? 0);
-        
-        if ($result_id <= 0) {
-            $_SESSION['error_messages'][] = '無効な結果IDです。';
-        } else {
-            try {
-                $db = getDbConnection();
-                
-                // 結果と大会の所有権確認
-                $stmt = $db->prepare("
-                    SELECT r.result_id, c.user_id, c.competition_id 
-                    FROM race_results r
-                    JOIN competitions c ON r.competition_id = c.competition_id
-                    WHERE r.result_id = ?
-                ");
-                $stmt->execute([$result_id]);
-                $result = $stmt->fetch();
-                
-                if (!$result || $result['user_id'] != $_SESSION['user_id']) {
-                    $_SESSION['error_messages'][] = '指定された結果が見つからないか、所有権がありません。';
-                } else {
-                    // 結果を削除
-                    $stmt = $db->prepare("DELETE FROM race_results WHERE result_id = ?");
-                    $stmt->execute([$result_id]);
-                    
-                    $_SESSION['success_messages'][] = '競技結果が正常に削除されました。';
-                    
-                    // 大会詳細ページにリダイレクト
-                    $competition_id = $result['competition_id'];
-                    header('Location: competition.php?action=view&id=' . $competition_id);
-                    exit;
-                }
-            } catch (PDOException $e) {
-                error_log('競技結果削除エラー: ' . $e->getMessage());
-                $_SESSION['error_messages'][] = '競技結果の削除中にエラーが発生しました。';
-            }
-        }
-    }
-}
-
 // ヘッダーの読み込み
 include 'includes/header.php';
+
+/**
+ * 1/100秒を時間文字列に変換
+ */
+function formatCentisecondsToTime($centiseconds) {
+    if (!$centiseconds) return '0.00';
+    
+    $minutes = floor($centiseconds / 6000);
+    $seconds = floor(($centiseconds % 6000) / 100);
+    $cs = $centiseconds % 100;
+    
+    if ($minutes > 0) {
+        return sprintf('%d:%02d.%02d', $minutes, $seconds, $cs);
+    } else {
+        return sprintf('%d.%02d', $seconds, $cs);
+    }
+}
 ?>
 
+<!-- Chart.js読み込み -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <?php if ($action === 'new'): ?>
-    <!-- 新規大会記録フォーム -->
+    <!-- 統合版新規大会記録フォーム -->
     <div class="mb-6 flex justify-between items-center">
         <h1 class="text-2xl font-bold">新しい大会記録</h1>
         <a href="competition.php" class="text-blue-600 hover:text-blue-800">
@@ -145,71 +46,325 @@ include 'includes/header.php';
     </div>
     
     <div class="bg-white rounded-lg shadow-md p-6">
-        <form method="POST" action="api/competition.php">
+        <form id="unified-competition-form" method="POST" action="api/competition.php">
             <!-- CSRFトークン -->
             <input type="hidden" name="csrf_token" value="<?php echo h(generateCsrfToken()); ?>">
+            <input type="hidden" name="action" value="add_unified_competition">
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <!-- 大会名 -->
-                <div>
-                    <label class="block text-gray-700 mb-2" for="competition_name">大会名 <span class="text-red-500">*</span></label>
-                    <input
-                        type="text"
-                        id="competition_name"
-                        name="competition_name"
-                        placeholder="第45回市民水泳大会"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                    >
+            <!-- 大会情報セクション -->
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-200">大会情報</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- 大会名 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="competition_name">大会名 <span class="text-red-500">*</span></label>
+                        <input
+                            type="text"
+                            id="competition_name"
+                            name="competition_name"
+                            placeholder="第45回市民水泳大会"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2"
+                            required
+                        >
+                    </div>
+                    
+                    <!-- 開催日 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="competition_date">開催日 <span class="text-red-500">*</span></label>
+                        <input
+                            type="date"
+                            id="competition_date"
+                            name="competition_date"
+                            value="<?php echo date('Y-m-d'); ?>"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2"
+                            required
+                        >
+                    </div>
+                    
+                    <!-- 開催場所 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="location">開催場所</label>
+                        <input
+                            type="text"
+                            id="location"
+                            name="location"
+                            placeholder="市民プール"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2"
+                        >
+                    </div>
                 </div>
                 
-                <!-- 開催日 -->
-                <div>
-                    <label class="block text-gray-700 mb-2" for="competition_date">開催日 <span class="text-red-500">*</span></label>
-                    <input
-                        type="date"
-                        id="competition_date"
-                        name="competition_date"
-                        value="<?php echo date('Y-m-d'); ?>"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                    >
-                </div>
-                
-                <!-- 開催場所 -->
-                <div>
-                    <label class="block text-gray-700 mb-2" for="location">開催場所</label>
-                    <input
-                        type="text"
-                        id="location"
-                        name="location"
-                        placeholder="市民プール"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2"
-                    >
+                <!-- 大会メモ -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2" for="competition_notes">大会メモ</label>
+                    <textarea
+                        id="competition_notes"
+                        name="competition_notes"
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 h-20"
+                        placeholder="大会の様子や全体的な感想など..."
+                    ></textarea>
                 </div>
             </div>
             
-            <!-- メモ -->
-            <div class="mb-6">
-                <label class="block text-gray-700 mb-2" for="notes">メモ</label>
-                <textarea
-                    id="notes"
-                    name="notes"
-                    class="w-full border border-gray-300 rounded-md px-3 py-2 h-24"
-                    placeholder="大会の様子や調子などのメモ..."
-                ></textarea>
+            <!-- 競技結果セクション -->
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-200">競技結果</h2>
+                
+                <!-- 基本情報 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    <!-- プール種別 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="pool_type">プール種別 <span class="text-red-500">*</span></label>
+                        <select id="pool_type" name="pool_type" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                            <option value="">選択してください</option>
+                            <option value="SCM">短水路 (25m)</option>
+                            <option value="LCM">長水路 (50m)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 泳法 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="stroke_type">泳法 <span class="text-red-500">*</span></label>
+                        <select id="stroke_type" name="stroke_type" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                            <option value="">選択してください</option>
+                            <option value="butterfly">バタフライ</option>
+                            <option value="backstroke">背泳ぎ</option>
+                            <option value="breaststroke">平泳ぎ</option>
+                            <option value="freestyle">自由形</option>
+                            <option value="medley">個人メドレー</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 距離 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="distance_meters">距離 <span class="text-red-500">*</span></label>
+                        <select id="distance_meters" name="distance_meters" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                            <option value="">距離を選択</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 種目名 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="event_name">種目名 <span class="text-red-500">*</span></label>
+                        <input type="text" id="event_name" name="event_name" 
+                               placeholder="例：男子、女子、混合、年代別など" 
+                               class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                    </div>
+                    
+                    <!-- 記録種別（4分類） -->
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="record_type">記録種別 <span class="text-red-500">*</span></label>
+                        <select id="record_type" name="record_type" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                            <option value="">選択してください</option>
+                            <option value="official">公認記録</option>
+                            <option value="relay_split">リレーラップ</option>
+                            <option value="unofficial">非公認記録</option>
+                            <option value="practice">練習時測定</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 順位 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="rank">順位（任意）</label>
+                        <input type="number" id="rank" name="rank" min="1" max="99" 
+                               placeholder="順位を入力" 
+                               class="w-full border border-gray-300 rounded-md px-3 py-2">
+                    </div>
+                </div>
+                
+                <!-- タイム入力 -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-3">タイム記録</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- 最終タイム -->
+                        <div>
+                            <label class="block text-gray-700 mb-2" for="final_time">最終タイム <span class="text-red-500">*</span></label>
+                            <input type="text" id="final_time" name="final_time" 
+                                   placeholder="例：1:23.45 または 23.45" 
+                                   pattern="^(\d{1,2}:)?\d{1,2}\.\d{2}$"
+                                   title="タイム形式: 秒.1/100秒 または 分:秒.1/100秒"
+                                   class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                            <div id="time-preview" class="text-sm mt-1"></div>
+                        </div>
+                        
+                        <!-- リアクションタイム -->
+                        <div>
+                            <label class="block text-gray-700 mb-2" for="reaction_time">リアクションタイム（任意）</label>
+                            <input type="text" id="reaction_time" name="reaction_time" 
+                                   placeholder="例：0.65" 
+                                   pattern="^\d\.\d{2}$"
+                                   title="リアクションタイム形式: 0.65"
+                                   class="w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ラップタイム入力 -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-3">ラップタイム（任意）</h3>
+                    
+                    <!-- ラップタイム入力方式選択 -->
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">入力方式</label>
+                        <div class="flex space-x-4">
+                            <label class="flex items-center">
+                                <input type="radio" id="lap_input_method_split" name="lap_input_method" value="split" checked 
+                                       class="h-4 w-4 text-blue-600">
+                                <span class="ml-2">スプリットタイム（各区間のタイム）</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" id="lap_input_method_cumulative" name="lap_input_method" value="cumulative" 
+                                       class="h-4 w-4 text-blue-600">
+                                <span class="ml-2">累積タイム（その時点での合計タイム）</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- ラップタイム入力欄（動的生成） -->
+                    <div id="lap_times_container">
+                        <!-- JavaScriptで動的に生成 -->
+                    </div>
+                </div>
+                
+                <!-- 競技メモ -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2" for="race_notes">競技メモ</label>
+                    <textarea id="race_notes" name="race_notes" rows="3" 
+                              placeholder="レース後の感想、気づいたこと、改善点など..." 
+                              class="w-full border border-gray-300 rounded-md px-3 py-2"></textarea>
+                </div>
             </div>
             
-            <div class="flex justify-end">
-                <button
-                    type="submit"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg"
-                >
-                    大会を記録する
+            <!-- 追加競技結果セクション -->
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium">追加の競技結果</h3>
+                    <button type="button" id="add-more-results" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
+                        <i class="fas fa-plus mr-1"></i> 競技を追加
+                    </button>
+                </div>
+                <div id="additional-results-container">
+                    <!-- 追加の競技結果がここに表示される -->
+                </div>
+                <p class="text-sm text-gray-600 mt-2">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    同じ大会で複数の種目に出場した場合は、「競技を追加」ボタンで追加できます。
+                </p>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="if(confirm('入力内容がリセットされます。よろしいですか？')) location.reload();" 
+                        class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+                    リセット
+                </button>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                    <i class="fas fa-save mr-1"></i> 大会記録を保存
                 </button>
             </div>
         </form>
     </div>
+    
+    <!-- 追加競技結果用テンプレート -->
+    <template id="additional-result-template">
+        <div class="additional-result-item bg-gray-50 p-4 rounded-lg mb-4 border-l-4 border-blue-500">
+            <div class="flex justify-between items-center mb-3">
+                <h4 class="font-medium">競技 <span class="result-number">2</span></h4>
+                <button type="button" class="remove-result text-red-600 hover:text-red-800">
+                    <i class="fas fa-trash"></i> 削除
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <!-- プール種別 -->
+                <div>
+                    <label class="block text-gray-700 mb-1 text-sm">プール種別 <span class="text-red-500">*</span></label>
+                    <select name="additional_results[INDEX][pool_type]" class="pool-type-select w-full border border-gray-300 rounded-md px-3 py-2 text-sm" required>
+                        <option value="">選択してください</option>
+                        <option value="SCM">短水路 (25m)</option>
+                        <option value="LCM">長水路 (50m)</option>
+                    </select>
+                </div>
+                
+                <!-- 泳法 -->
+                <div>
+                    <label class="block text-gray-700 mb-1 text-sm">泳法 <span class="text-red-500">*</span></label>
+                    <select name="additional_results[INDEX][stroke_type]" class="stroke-type-select w-full border border-gray-300 rounded-md px-3 py-2 text-sm" required>
+                        <option value="">選択してください</option>
+                        <option value="butterfly">バタフライ</option>
+                        <option value="backstroke">背泳ぎ</option>
+                        <option value="breaststroke">平泳ぎ</option>
+                        <option value="freestyle">自由形</option>
+                        <option value="medley">個人メドレー</option>
+                    </select>
+                </div>
+                
+                <!-- 距離 -->
+                <div>
+                    <label class="block text-gray-700 mb-1 text-sm">距離 <span class="text-red-500">*</span></label>
+                    <select name="additional_results[INDEX][distance_meters]" class="distance-select w-full border border-gray-300 rounded-md px-3 py-2 text-sm" required>
+                        <option value="">距離を選択</option>
+                    </select>
+                </div>
+                
+                <!-- 種目名 -->
+                <div>
+                    <label class="block text-gray-700 mb-1 text-sm">種目名 <span class="text-red-500">*</span></label>
+                    <input type="text" name="additional_results[INDEX][event_name]" 
+                           placeholder="例：男子、女子、混合など" 
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" required>
+                </div>
+                
+                <!-- 記録種別 -->
+                <div>
+                    <label class="block text-gray-700 mb-1 text-sm">記録種別 <span class="text-red-500">*</span></label>
+                    <select name="additional_results[INDEX][record_type]" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" required>
+                        <option value="">選択してください</option>
+                        <option value="official">公認記録</option>
+                        <option value="relay_split">リレーラップ</option>
+                        <option value="unofficial">非公認記録</option>
+                        <option value="practice">練習時測定</option>
+                    </select>
+                </div>
+                
+                <!-- 順位 -->
+                <div>
+                    <label class="block text-gray-700 mb-1 text-sm">順位（任意）</label>
+                    <input type="number" name="additional_results[INDEX][rank]" min="1" max="99" 
+                           placeholder="順位" 
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                </div>
+            </div>
+            
+            <!-- タイム入力 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-gray-700 mb-1 text-sm">最終タイム <span class="text-red-500">*</span></label>
+                    <input type="text" name="additional_results[INDEX][final_time]" 
+                           placeholder="例：1:23.45 または 23.45" 
+                           pattern="^(\d{1,2}:)?\d{1,2}\.\d{2}$"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-1 text-sm">リアクションタイム（任意）</label>
+                    <input type="text" name="additional_results[INDEX][reaction_time]" 
+                           placeholder="例：0.65" 
+                           pattern="^\d\.\d{2}$"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                </div>
+            </div>
+            
+            <!-- 競技メモ -->
+            <div>
+                <label class="block text-gray-700 mb-1 text-sm">競技メモ</label>
+                <textarea name="additional_results[INDEX][race_notes]" rows="2" 
+                          placeholder="この競技についてのメモ..." 
+                          class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"></textarea>
+            </div>
+        </div>
+    </template>
+
 <?php elseif ($action === 'view' && $competitionId > 0): ?>
     <!-- 大会詳細表示 -->
     <?php
@@ -229,11 +384,17 @@ include 'includes/header.php';
         $competition = $stmt->fetch();
         
         if ($competition) {
-            // 競技結果を取得
+            // 競技結果を取得（新旧両方のスキーマに対応）
             $stmt = $db->prepare("
-                SELECT * FROM race_results
-                WHERE competition_id = ?
-                ORDER BY is_personal_best DESC, event_name ASC
+                SELECT r.*, 
+                       (SELECT COUNT(*) FROM lap_times lt WHERE lt.result_id = r.result_id) as lap_count
+                FROM race_results r
+                WHERE r.competition_id = ?
+                ORDER BY 
+                    r.is_personal_best DESC, 
+                    COALESCE(r.stroke_type_new, r.stroke_type), 
+                    COALESCE(r.distance_meters, r.distance), 
+                    COALESCE(r.total_time_centiseconds, (r.time_minutes * 6000 + r.time_seconds * 100 + r.time_milliseconds / 10))
             ");
             $stmt->execute([$competitionId]);
             $results = $stmt->fetchAll();
@@ -249,137 +410,208 @@ include 'includes/header.php';
         echo '<div class="mt-4"><a href="competition.php" class="text-blue-600 hover:text-blue-800"><i class="fas fa-arrow-left mr-1"></i> 大会一覧に戻る</a></div>';
     } else {
     ?>
+    
     <div class="mb-6 flex justify-between items-center">
         <h1 class="text-2xl font-bold">大会詳細</h1>
-        <a href="competition.php" class="text-blue-600 hover:text-blue-800">
-            <i class="fas fa-arrow-left mr-1"></i> 大会一覧に戻る
-        </a>
+        <div class="flex space-x-3">
+            <a href="competition.php" class="text-blue-600 hover:text-blue-800">
+                <i class="fas fa-arrow-left mr-1"></i> 大会一覧
+            </a>
+            <button onclick="exportResults()" class="text-green-600 hover:text-green-800">
+                <i class="fas fa-download mr-1"></i> エクスポート
+            </button>
+        </div>
     </div>
     
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <!-- 大会情報 -->
-        <div class="md:col-span-2 bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-xl font-semibold mb-4 pb-2 border-b">大会情報</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <p class="text-gray-600 text-sm">大会名</p>
-                    <p class="font-medium"><?php echo h($competition['competition_name']); ?></p>
+    <!-- 大会情報カード -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex justify-between items-start">
+            <div>
+                <h2 class="text-xl font-semibold mb-2"><?php echo h($competition['competition_name']); ?></h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                        <span class="text-gray-600">開催日:</span>
+                        <span class="font-medium"><?php echo date('Y年n月j日', strtotime($competition['competition_date'])); ?></span>
+                    </div>
+                    <?php if (!empty($competition['location'])): ?>
+                    <div>
+                        <span class="text-gray-600">場所:</span>
+                        <span class="font-medium"><?php echo h($competition['location']); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <div>
+                        <span class="text-gray-600">記録数:</span>
+                        <span class="font-medium"><?php echo count($results); ?> 件</span>
+                    </div>
                 </div>
-                
-                <div>
-                    <p class="text-gray-600 text-sm">開催日</p>
-                    <p class="font-medium">
-                        <?php echo date('Y年n月j日', strtotime($competition['competition_date'])); ?>
-                        (<?php echo ['日', '月', '火', '水', '木', '金', '土'][date('w', strtotime($competition['competition_date']))]; ?>)
-                    </p>
-                </div>
-                
-                <?php if (!empty($competition['location'])): ?>
-                <div>
-                    <p class="text-gray-600 text-sm">開催場所</p>
-                    <p class="font-medium"><?php echo h($competition['location']); ?></p>
+                <?php if (!empty($competition['notes'])): ?>
+                <div class="mt-3">
+                    <span class="text-gray-600 text-sm">メモ:</span>
+                    <div class="bg-gray-50 p-2 rounded mt-1 text-sm">
+                        <?php echo nl2br(h($competition['notes'])); ?>
+                    </div>
                 </div>
                 <?php endif; ?>
             </div>
-            
-            <?php if (!empty($competition['notes'])): ?>
-            <div class="mt-4">
-                <p class="text-gray-600 text-sm">メモ</p>
-                <div class="bg-gray-50 p-3 rounded mt-1">
-                    <?php echo nl2br(h($competition['notes'])); ?>
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
-        
-        <!-- 新しい記録追加 -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-xl font-semibold mb-4">新しい記録を追加</h2>
-            
-            <a href="#add-result-form" class="block w-full bg-green-600 hover:bg-green-700 text-white text-center font-medium py-2 px-4 rounded-lg">
-                <i class="fas fa-plus mr-1"></i> 新規記録を追加
-            </a>
         </div>
     </div>
     
     <!-- 競技結果一覧 -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4">競技結果</h2>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">競技結果</h2>
+            <a href="#add-result-form" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-plus mr-1"></i> 新規記録を追加
+            </a>
+        </div>
         
         <?php if (empty($results)): ?>
-        <div class="text-center py-6">
-            <p class="text-gray-500 mb-4">
-                まだ競技結果が記録されていません。<br>以下のフォームから記録を追加しましょう。
-            </p>
+        <div class="text-center py-8">
+            <p class="text-gray-500 mb-4">まだ競技結果が記録されていません。</p>
+            <a href="#add-result-form" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                最初の記録を追加
+            </a>
         </div>
         <?php else: ?>
+        
+        <!-- フィルター -->
+        <div class="mb-4 flex flex-wrap gap-2">
+            <button onclick="filterResults('all')" class="filter-btn active bg-blue-500 text-white px-3 py-1 rounded-full text-sm border">すべて</button>
+            <button onclick="filterResults('official')" class="filter-btn border-gray-300 text-gray-700 px-3 py-1 rounded-full text-sm border">公認記録</button>
+            <button onclick="filterResults('personal_best')" class="filter-btn border-gray-300 text-gray-700 px-3 py-1 rounded-full text-sm border">自己ベスト</button>
+        </div>
+        
         <div class="overflow-x-auto">
             <table class="min-w-full">
                 <thead>
                     <tr class="bg-gray-50">
-                        <th class="py-2 px-4 text-left">種目</th>
-                        <th class="py-2 px-4 text-left">距離</th>
-                        <th class="py-2 px-4 text-left">タイム</th>
-                        <th class="py-2 px-4 text-left">順位</th>
-                        <th class="py-2 px-4 text-left">自己ベスト</th>
-                        <th class="py-2 px-4 text-left">操作</th>
+                        <th class="py-3 px-4 text-left">種目</th>
+                        <th class="py-3 px-4 text-left">タイム</th>
+                        <th class="py-3 px-4 text-left">順位</th>
+                        <th class="py-3 px-4 text-left">記録種別</th>
+                        <th class="py-3 px-4 text-left">ラップ</th>
+                        <th class="py-3 px-4 text-left">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php 
                     $strokeNames = [
-                        'freestyle' => '自由形',
+                        'butterfly' => 'バタフライ',
                         'backstroke' => '背泳ぎ',
                         'breaststroke' => '平泳ぎ',
-                        'butterfly' => 'バタフライ',
+                        'freestyle' => '自由形',
+                        'medley' => '個人メドレー',
                         'im' => '個人メドレー',
                         'other' => 'その他'
                     ];
                     
+                    $poolTypeNames = [
+                        'SCM' => '短水路',
+                        'LCM' => '長水路'
+                    ];
+                    
+                    $recordTypeNames = [
+                        'official' => '公認記録',
+                        'relay_split' => 'リレーラップ',
+                        'unofficial' => '非公認記録',
+                        'practice' => '練習時測定',
+                        'competition' => '公式大会',
+                        'time_trial' => 'タイム測定会'
+                    ];
+                    
                     foreach ($results as $result): 
-                        // タイム表示の整形
-                        $minutes = $result['time_minutes'];
-                        $seconds = $result['time_seconds'];
-                        $milliseconds = $result['time_milliseconds'];
+                        // 新旧スキーマ対応
+                        $stroke_type = $result['stroke_type_new'] ?? $result['stroke_type'] ?? 'freestyle';
+                        $distance = $result['distance_meters'] ?? $result['distance'] ?? 0;
+                        $pool_type = $result['pool_type'] ?? 'SCM';
                         
-                        $timeDisplay = '';
-                        if ($minutes > 0) {
-                            $timeDisplay .= $minutes . ':';
-                            $timeDisplay .= str_pad($seconds, 2, '0', STR_PAD_LEFT);
+                        // タイム表示の計算（新旧スキーマ対応）
+                        if (!empty($result['total_time_centiseconds'])) {
+                            $timeDisplay = formatCentisecondsToTime($result['total_time_centiseconds']);
                         } else {
-                            $timeDisplay .= $seconds;
+                            // 旧形式からの変換
+                            $minutes = $result['time_minutes'] ?? 0;
+                            $seconds = $result['time_seconds'] ?? 0;
+                            $milliseconds = $result['time_milliseconds'] ?? 0;
+                            
+                            if ($minutes > 0) {
+                                $timeDisplay = sprintf('%d:%02d.%03d', $minutes, $seconds, $milliseconds);
+                            } else {
+                                $timeDisplay = sprintf('%d.%03d', $seconds, $milliseconds);
+                            }
                         }
-                        $timeDisplay .= '.' . str_pad($milliseconds, 3, '0', STR_PAD_LEFT);
+                        
+                        // 種目表示
+                        $eventDisplay = $distance . 'm' . 
+                                      ($strokeNames[$stroke_type] ?? $stroke_type);
+                        if ($pool_type) {
+                            $eventDisplay .= '(' . ($poolTypeNames[$pool_type] ?? $pool_type) . ')';
+                        }
+                        
+                        $is_official = $result['is_official'] ?? true;
+                        $is_personal_best = $result['is_personal_best'] ?? false;
+                        $record_type = $result['record_type'] ?? 'competition';
                     ?>
-                    <tr class="border-b">
-                        <td class="py-3 px-4"><?php echo h($result['event_name']); ?></td>
+                    <tr class="border-b result-row" 
+                        data-official="<?php echo $is_official ? 'true' : 'false'; ?>"
+                        data-personal-best="<?php echo $is_personal_best ? 'true' : 'false'; ?>">
                         <td class="py-3 px-4">
-                            <?php echo h($result['distance']); ?>m 
-                            <?php echo h($strokeNames[$result['stroke_type']] ?? $result['stroke_type']); ?>
-                        </td>
-                        <td class="py-3 px-4 font-medium"><?php echo h($timeDisplay); ?></td>
-                        <td class="py-3 px-4">
-                            <?php echo $result['rank'] ? h($result['rank']) . '位' : '-'; ?>
-                        </td>
-                        <td class="py-3 px-4">
-                            <?php if ($result['is_personal_best']): ?>
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <div class="flex items-center">
+                                <span><?php echo h($eventDisplay); ?></span>
+                                <?php if ($is_personal_best): ?>
+                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                     <i class="fas fa-trophy mr-1"></i> PB
                                 </span>
-                            <?php else: ?>
-                                -
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4">
+                            <div class="font-medium text-lg"><?php echo h($timeDisplay); ?></div>
+                            <?php if (!empty($result['reaction_time_centiseconds'])): ?>
+                            <div class="text-xs text-gray-500">
+                                RT: <?php echo formatCentisecondsToTime($result['reaction_time_centiseconds']); ?>
+                            </div>
                             <?php endif; ?>
                         </td>
                         <td class="py-3 px-4">
-                            <form method="POST" action="competition.php" class="inline-block" onsubmit="return confirm('この記録を削除してもよろしいですか？');">
-                                <input type="hidden" name="csrf_token" value="<?php echo h(generateCsrfToken()); ?>">
-                                <input type="hidden" name="action" value="delete_result">
-                                <input type="hidden" name="result_id" value="<?php echo $result['result_id']; ?>">
-                                <button type="submit" class="text-red-600 hover:text-red-800" title="削除">
-                                    <i class="fas fa-trash"></i>
+                            <?php echo $result['rank'] ? $result['rank'] . '位' : '-'; ?>
+                        </td>
+                        <td class="py-3 px-4">
+                            <div class="flex flex-col">
+                                <span class="text-sm"><?php echo h($recordTypeNames[$record_type] ?? $record_type); ?></span>
+                                <span class="text-xs <?php echo $is_official ? 'text-blue-600' : 'text-gray-500'; ?>">
+                                    <?php echo $is_official ? '公式' : '非公式'; ?>
+                                </span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4">
+                            <?php if ($result['lap_count'] > 0): ?>
+                            <button onclick="showLapTimes(<?php echo $result['result_id']; ?>)" 
+                                    class="text-blue-600 hover:text-blue-800 text-sm">
+                                <i class="fas fa-stopwatch mr-1"></i> ラップ表示
+                            </button>
+                            <?php else: ?>
+                            <span class="text-gray-400 text-sm">-</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="py-3 px-4">
+                            <div class="flex space-x-2">
+                                <?php if (!empty($result['stroke_type_new']) && !empty($result['distance_meters'])): ?>
+                                <button onclick="showProgressChart('<?php echo $result['stroke_type_new']; ?>', <?php echo $result['distance_meters']; ?>, '<?php echo $result['pool_type']; ?>')" 
+                                        class="text-green-600 hover:text-green-800" title="進歩グラフ">
+                                    <i class="fas fa-chart-line"></i>
                                 </button>
-                            </form>
+                                <?php endif; ?>
+                                <form method="POST" action="api/competition.php" class="inline-block" 
+                                      onsubmit="return confirm('この記録を削除してもよろしいですか？');">
+                                    <input type="hidden" name="csrf_token" value="<?php echo h(generateCsrfToken()); ?>">
+                                    <input type="hidden" name="action" value="delete_result">
+                                    <input type="hidden" name="result_id" value="<?php echo $result['result_id']; ?>">
+                                    <button type="submit" class="text-red-600 hover:text-red-800" title="削除">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -391,153 +623,153 @@ include 'includes/header.php';
     
     <!-- 記録追加フォーム -->
     <div id="add-result-form" class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4">記録の追加</h2>
+        <h2 class="text-xl font-semibold mb-4">新しい記録を追加</h2>
         
-        <form method="POST" action="competition.php">
+        <form id="competition-result-form" method="POST" action="api/competition.php">
             <input type="hidden" name="csrf_token" value="<?php echo h(generateCsrfToken()); ?>">
             <input type="hidden" name="action" value="add_result">
             <input type="hidden" name="competition_id" value="<?php echo $competitionId; ?>">
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <!-- 種目名 -->
+            <!-- 基本情報 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                <!-- プール種別 -->
                 <div>
-                    <label class="block text-gray-700 mb-2" for="event_name">種目名 <span class="text-red-500">*</span></label>
-                    <input
-                        type="text"
-                        id="event_name"
-                        name="event_name"
-                        placeholder="例：男子, 女子, 混合など"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                    >
-                </div>
-                
-                <!-- 距離 -->
-                <div>
-                    <label class="block text-gray-700 mb-2" for="distance">距離 (m) <span class="text-red-500">*</span></label>
-                    <select
-                        id="distance"
-                        name="distance"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                    >
-                        <option value="25">25m</option>
-                        <option value="50" selected>50m</option>
-                        <option value="100">100m</option>
-                        <option value="200">200m</option>
-                        <option value="400">400m</option>
-                        <option value="800">800m</option>
-                        <option value="1500">1500m</option>
+                    <label class="block text-gray-700 mb-2" for="pool_type">プール種別 <span class="text-red-500">*</span></label>
+                    <select id="pool_type" name="pool_type" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                        <option value="">選択してください</option>
+                        <option value="SCM">短水路 (25m)</option>
+                        <option value="LCM">長水路 (50m)</option>
                     </select>
                 </div>
                 
                 <!-- 泳法 -->
                 <div>
                     <label class="block text-gray-700 mb-2" for="stroke_type">泳法 <span class="text-red-500">*</span></label>
-                    <select
-                        id="stroke_type"
-                        name="stroke_type"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                    >
-                        <option value="freestyle">自由形</option>
+                    <select id="stroke_type" name="stroke_type" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                        <option value="">選択してください</option>
+                        <option value="butterfly">バタフライ</option>
                         <option value="backstroke">背泳ぎ</option>
                         <option value="breaststroke">平泳ぎ</option>
-                        <option value="butterfly">バタフライ</option>
-                        <option value="im">個人メドレー</option>
-                        <option value="other">その他</option>
+                        <option value="freestyle">自由形</option>
+                        <option value="medley">個人メドレー</option>
                     </select>
                 </div>
                 
-                <!-- タイム -->
+                <!-- 距離 -->
                 <div>
-                    <label class="block text-gray-700 mb-2" for="time">タイム <span class="text-red-500">*</span></label>
-                    <div class="flex items-center">
-                        <input
-                            type="number"
-                            id="time_minutes"
-                            name="time_minutes"
-                            placeholder="0"
-                            min="0"
-                            max="59"
-                            class="w-16 border border-gray-300 rounded-md px-3 py-2"
-                        >
-                        <span class="mx-1">:</span>
-                        <input
-                            type="number"
-                            id="time_seconds"
-                            name="time_seconds"
-                            placeholder="45"
-                            min="0"
-                            max="59"
-                            class="w-16 border border-gray-300 rounded-md px-3 py-2"
-                            required
-                        >
-                        <span class="mx-1">.</span>
-                        <input
-                            type="number"
-                            id="time_milliseconds"
-                            name="time_milliseconds"
-                            placeholder="00"
-                            min="0"
-                            max="999"
-                            class="w-20 border border-gray-300 rounded-md px-3 py-2"
-                            required
-                        >
-                    </div>
+                    <label class="block text-gray-700 mb-2" for="distance_meters">距離 <span class="text-red-500">*</span></label>
+                    <select id="distance_meters" name="distance_meters" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                        <option value="">距離を選択</option>
+                    </select>
+                </div>
+                
+                <!-- 種目名 -->
+                <div>
+                    <label class="block text-gray-700 mb-2" for="event_name">種目名 <span class="text-red-500">*</span></label>
+                    <input type="text" id="event_name" name="event_name" 
+                           placeholder="例：男子、女子、混合など" 
+                           class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                </div>
+                
+                <!-- 記録種別 -->
+                <div>
+                    <label class="block text-gray-700 mb-2" for="record_type">記録種別 <span class="text-red-500">*</span></label>
+                    <select id="record_type" name="record_type" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                        <option value="">選択してください</option>
+                        <option value="official">公認記録</option>
+                        <option value="relay_split">リレーラップ</option>
+                        <option value="unofficial">非公認記録</option>
+                        <option value="practice">練習時測定</option>
+                    </select>
                 </div>
                 
                 <!-- 順位 -->
                 <div>
-                    <label class="block text-gray-700 mb-2" for="rank">順位</label>
-                    <input
-                        type="number"
-                        id="rank"
-                        name="rank"
-                        placeholder="順位（任意）"
-                        min="1"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2"
-                    >
+                    <label class="block text-gray-700 mb-2" for="rank">順位（任意）</label>
+                    <input type="number" id="rank" name="rank" min="1" max="99" 
+                           placeholder="順位を入力" 
+                           class="w-full border border-gray-300 rounded-md px-3 py-2">
+                </div>
+            </div>
+            
+            <!-- タイム入力 -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3">タイム記録</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 最終タイム -->
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="final_time">最終タイム <span class="text-red-500">*</span></label>
+                        <input type="text" id="final_time" name="final_time" 
+                               placeholder="例：1:23.45 または 23.45" 
+                               pattern="^(\d{1,2}:)?\d{1,2}\.\d{2}$"
+                               title="タイム形式: 秒.1/100秒 または 分:秒.1/100秒"
+                               class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                        <div id="time-preview" class="text-sm mt-1"></div>
+                    </div>
+                    
+                    <!-- リアクションタイム -->
+                    <div>
+                        <label class="block text-gray-700 mb-2" for="reaction_time">リアクションタイム（任意）</label>
+                        <input type="text" id="reaction_time" name="reaction_time" 
+                               placeholder="例：0.65" 
+                               pattern="^\d\.\d{2}$"
+                               title="リアクションタイム形式: 0.65"
+                               class="w-full border border-gray-300 rounded-md px-3 py-2">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ラップタイム入力 -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3">ラップタイム（任意）</h3>
+                
+                <!-- ラップタイム入力方式選択 -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">入力方式</label>
+                    <div class="flex space-x-4">
+                        <label class="flex items-center">
+                            <input type="radio" id="lap_input_method_split" name="lap_input_method" value="split" checked 
+                                   class="h-4 w-4 text-blue-600">
+                            <span class="ml-2">スプリットタイム（各区間のタイム）</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" id="lap_input_method_cumulative" name="lap_input_method" value="cumulative" 
+                                   class="h-4 w-4 text-blue-600">
+                            <span class="ml-2">累積タイム（その時点での合計タイム）</span>
+                        </label>
+                    </div>
                 </div>
                 
-                <!-- 自己ベスト -->
-                <div class="flex items-center mt-8">
-                    <input
-                        type="checkbox"
-                        id="is_personal_best"
-                        name="is_personal_best"
-                        class="h-4 w-4 text-blue-600"
-                    >
-                    <label class="ml-2 text-gray-700" for="is_personal_best">
-                        自己ベスト記録
-                    </label>
+                <!-- ラップタイム入力欄（動的生成） -->
+                <div id="lap_times_container">
+                    <!-- JavaScriptで動的に生成 -->
                 </div>
             </div>
             
             <!-- メモ -->
             <div class="mb-6">
                 <label class="block text-gray-700 mb-2" for="notes">メモ</label>
-                <textarea
-                    id="notes"
-                    name="notes"
-                    class="w-full border border-gray-300 rounded-md px-3 py-2 h-24"
-                    placeholder="メモや気づいたことなど..."
-                ></textarea>
+                <textarea id="notes" name="notes" rows="3" 
+                          placeholder="レース後の感想や気づいたことなど..." 
+                          class="w-full border border-gray-300 rounded-md px-3 py-2"></textarea>
             </div>
             
-            <div class="flex justify-end">
-                <button
-                    type="submit"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg"
-                >
-                    記録を追加する
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="document.getElementById('competition-result-form').reset(); location.reload();" 
+                        class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+                    リセット
+                </button>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                    記録を保存
                 </button>
             </div>
         </form>
     </div>
+    
     <?php } ?>
 <?php else: ?>
-    <!-- 大会一覧 -->
+    <!-- 大会一覧表示 -->
     <div class="mb-6 flex justify-between items-center">
         <h1 class="text-2xl font-bold">大会記録</h1>
         <a href="competition.php?action=new" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center">
@@ -632,7 +864,7 @@ include 'includes/header.php';
         <h2 class="text-xl font-semibold mb-4">自己ベスト記録</h2>
         
         <?php
-        // 自己ベスト記録を取得
+        // 自己ベスト記録を取得（新旧スキーマ対応）
         $personalBests = [];
         try {
             $db = getDbConnection();
@@ -641,7 +873,9 @@ include 'includes/header.php';
                 FROM race_results r
                 JOIN competitions c ON r.competition_id = c.competition_id
                 WHERE c.user_id = ? AND r.is_personal_best = 1
-                ORDER BY r.stroke_type, r.distance
+                ORDER BY 
+                    COALESCE(r.stroke_type_new, r.stroke_type), 
+                    COALESCE(r.distance_meters, r.distance)
             ");
             $stmt->execute([$_SESSION['user_id']]);
             $personalBests = $stmt->fetchAll();
@@ -672,11 +906,12 @@ include 'includes/header.php';
             'breaststroke' => '平泳ぎ',
             'butterfly' => 'バタフライ',
             'im' => '個人メドレー',
+            'medley' => '個人メドレー',
             'other' => 'その他'
         ];
         
         foreach ($personalBests as $record) {
-            $stroke = $record['stroke_type'];
+            $stroke = $record['stroke_type_new'] ?? $record['stroke_type'] ?? 'other';
             if (!isset($groupedRecords[$stroke])) {
                 $groupedRecords[$stroke] = [];
             }
@@ -702,22 +937,27 @@ include 'includes/header.php';
                     </thead>
                     <tbody>
                         <?php foreach ($records as $record): 
-                            // タイム表示の整形
-                            $minutes = $record['time_minutes'];
-                            $seconds = $record['time_seconds'];
-                            $milliseconds = $record['time_milliseconds'];
+                            // 距離の取得（新旧対応）
+                            $distance = $record['distance_meters'] ?? $record['distance'] ?? 0;
                             
-                            $timeDisplay = '';
-                            if ($minutes > 0) {
-                                $timeDisplay .= $minutes . ':';
-                                $timeDisplay .= str_pad($seconds, 2, '0', STR_PAD_LEFT);
+                            // タイム表示の計算（新旧スキーマ対応）
+                            if (!empty($record['total_time_centiseconds'])) {
+                                $timeDisplay = formatCentisecondsToTime($record['total_time_centiseconds']);
                             } else {
-                                $timeDisplay .= $seconds;
+                                // 旧形式からの変換
+                                $minutes = $record['time_minutes'] ?? 0;
+                                $seconds = $record['time_seconds'] ?? 0;
+                                $milliseconds = $record['time_milliseconds'] ?? 0;
+                                
+                                if ($minutes > 0) {
+                                    $timeDisplay = sprintf('%d:%02d.%03d', $minutes, $seconds, $milliseconds);
+                                } else {
+                                    $timeDisplay = sprintf('%d.%03d', $seconds, $milliseconds);
+                                }
                             }
-                            $timeDisplay .= '.' . str_pad($milliseconds, 3, '0', STR_PAD_LEFT);
                         ?>
                         <tr class="border-b">
-                            <td class="py-3 px-4"><?php echo h($record['distance']); ?>m</td>
+                            <td class="py-3 px-4"><?php echo h($distance); ?>m</td>
                             <td class="py-3 px-4 font-medium"><?php echo h($timeDisplay); ?></td>
                             <td class="py-3 px-4"><?php echo h($record['competition_name']); ?></td>
                             <td class="py-3 px-4">
@@ -788,6 +1028,9 @@ include 'includes/header.php';
     });
     </script>
 <?php endif; ?>
+
+<!-- JavaScript読み込み -->
+<script src="assets/js/competition_form.js"></script>
 
 <?php
 // フッターの読み込み
