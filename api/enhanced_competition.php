@@ -1,5 +1,5 @@
 <?php
-// api/enhanced_competition.php - 改良版大会記録API
+// api/enhanced_competition.php - 簡易版大会記録API
 require_once '../config/config.php';
 
 // ログイン確認
@@ -26,15 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'add_result':
             addRaceResult();
             break;
-        case 'update_result':
-            updateRaceResult();
-            break;
-        case 'delete_result':
-            deleteRaceResult();
-            break;
-        case 'get_event_config':
-            getEventConfiguration();
-            break;
         default:
             header('Content-Type: application/json');
             echo json_encode(['error' => '無効なアクションです']);
@@ -44,12 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_GET['action'] ?? '';
     
     switch ($action) {
-        case 'get_events':
-            getAvailableEvents();
-            break;
-        case 'get_personal_bests':
-            getPersonalBests();
-            break;
         case 'get_progress_chart':
             getProgressChart();
             break;
@@ -58,10 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['message' => 'APIは準備中です。']);
             exit;
     }
-} else {
-    header('Content-Type: application/json');
-    echo json_encode(['error' => 'サポートされていないリクエストメソッドです。']);
-    exit;
 }
 
 /**
@@ -83,13 +64,49 @@ function addRaceResult() {
     $final_time = $_POST['final_time'] ?? '';
     $reaction_time = $_POST['reaction_time'] ?? '';
     $lap_times_data = $_POST['lap_times'] ?? [];
-    $lap_input_method = $_POST['lap_input_method'] ?? 'split'; // 'split' or 'cumulative'
+    $lap_input_method = $_POST['lap_input_method'] ?? 'split';
     
     // 入力検証
-    $validation_result = validateRaceResultInput($competition_id, $event_name, $stroke_type, $distance_meters, $pool_type, $final_time);
-    if (!$validation_result['valid']) {
+    if ($competition_id <= 0) {
         header('Content-Type: application/json');
-        echo json_encode(['error' => $validation_result['message']]);
+        echo json_encode(['error' => '無効な大会IDです。']);
+        exit;
+    }
+    
+    if (empty($event_name)) {
+        header('Content-Type: application/json');
+        echo json_encode(['error' => '種目名は必須です。']);
+        exit;
+    }
+    
+    if (empty($stroke_type) || !in_array($stroke_type, ['butterfly', 'backstroke', 'breaststroke', 'freestyle', 'medley'])) {
+        header('Content-Type: application/json');
+        echo json_encode(['error' => '有効な泳法を選択してください。']);
+        exit;
+    }
+    
+    if ($distance_meters <= 0) {
+        header('Content-Type: application/json');
+        echo json_encode(['error' => '距離は正の値で入力してください。']);
+        exit;
+    }
+    
+    if (!in_array($pool_type, ['SCM', 'LCM'])) {
+        header('Content-Type: application/json');
+        echo json_encode(['error' => '有効なプール種別を選択してください。']);
+        exit;
+    }
+    
+    if (empty($final_time)) {
+        header('Content-Type: application/json');
+        echo json_encode(['error' => '最終タイムは必須です。']);
+        exit;
+    }
+    
+    // タイム形式の検証
+    if (!preg_match('/^(\d{1,2}:)?\d{1,2}\.\d{2}$/', $final_time)) {
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'タイム形式が正しくありません（例: 23.45 または 1:23.45）']);
         exit;
     }
     
@@ -140,8 +157,8 @@ function addRaceResult() {
             foreach ($processed_laps as $lap) {
                 $stmt = $db->prepare("
                     INSERT INTO lap_times 
-                    (result_id, lap_number, distance_meters, split_time_centiseconds, lap_time_centiseconds)
-                    VALUES (?, ?, ?, ?, ?)
+                    (result_id, lap_number, distance_meters, split_time_centiseconds, lap_time_centiseconds, created_at)
+                    VALUES (?, ?, ?, ?, ?, NOW())
                 ");
                 $stmt->execute([
                     $result_id, $lap['lap_number'], $lap['distance'], 
@@ -173,111 +190,6 @@ function addRaceResult() {
         error_log('競技結果保存エラー: ' . $e->getMessage());
         header('Content-Type: application/json');
         echo json_encode(['error' => '競技結果の保存中にエラーが発生しました。']);
-        exit;
-    }
-}
-
-/**
- * 利用可能な種目を取得
- */
-function getAvailableEvents() {
-    try {
-        $db = getDbConnection();
-        
-        $stmt = $db->prepare("
-            SELECT stroke_type, distance_meters, pool_type, display_name
-            FROM event_configurations
-            WHERE is_valid = TRUE
-            ORDER BY stroke_type, distance_meters, pool_type
-        ");
-        $stmt->execute();
-        $events = $stmt->fetchAll();
-        
-        // 泳法別にグループ化
-        $grouped_events = [];
-        foreach ($events as $event) {
-            $stroke = $event['stroke_type'];
-            if (!isset($grouped_events[$stroke])) {
-                $grouped_events[$stroke] = [];
-            }
-            $grouped_events[$stroke][] = $event;
-        }
-        
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'events' => $events,
-            'grouped_events' => $grouped_events
-        ]);
-        exit;
-        
-    } catch (PDOException $e) {
-        error_log('種目取得エラー: ' . $e->getMessage());
-        header('Content-Type: application/json');
-        echo json_encode(['error' => '種目の取得中にエラーが発生しました。']);
-        exit;
-    }
-}
-
-/**
- * 自己ベスト記録を取得
- */
-function getPersonalBests() {
-    $stroke_type = $_GET['stroke_type'] ?? '';
-    $distance_meters = (int)($_GET['distance_meters'] ?? 0);
-    $pool_type = $_GET['pool_type'] ?? '';
-    
-    try {
-        $db = getDbConnection();
-        
-        $sql = "
-            SELECT r.*, c.competition_name, c.competition_date
-            FROM race_results r
-            JOIN competitions c ON r.competition_id = c.competition_id
-            WHERE c.user_id = ? AND r.is_personal_best = TRUE
-        ";
-        $params = [$_SESSION['user_id']];
-        
-        // フィルター条件を追加
-        if (!empty($stroke_type)) {
-            $sql .= " AND r.stroke_type_new = ?";
-            $params[] = $stroke_type;
-        }
-        
-        if ($distance_meters > 0) {
-            $sql .= " AND r.distance_meters = ?";
-            $params[] = $distance_meters;
-        }
-        
-        if (!empty($pool_type)) {
-            $sql .= " AND r.pool_type = ?";
-            $params[] = $pool_type;
-        }
-        
-        $sql .= " ORDER BY r.stroke_type_new, r.distance_meters, r.pool_type, r.total_time_centiseconds";
-        
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        $results = $stmt->fetchAll();
-        
-        // タイムをフォーマット
-        foreach ($results as &$result) {
-            $result['formatted_time'] = formatCentisecondsToTime($result['total_time_centiseconds']);
-            $result['formatted_reaction_time'] = $result['reaction_time_centiseconds'] ? 
-                formatCentisecondsToTime($result['reaction_time_centiseconds']) : null;
-        }
-        
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'personal_bests' => $results
-        ]);
-        exit;
-        
-    } catch (PDOException $e) {
-        error_log('自己ベスト取得エラー: ' . $e->getMessage());
-        header('Content-Type: application/json');
-        echo json_encode(['error' => '自己ベストの取得中にエラーが発生しました。']);
         exit;
     }
 }
@@ -347,42 +259,6 @@ function getProgressChart() {
 }
 
 /**
- * 入力検証を行う
- */
-function validateRaceResultInput($competition_id, $event_name, $stroke_type, $distance_meters, $pool_type, $final_time) {
-    if ($competition_id <= 0) {
-        return ['valid' => false, 'message' => '無効な大会IDです。'];
-    }
-    
-    if (empty($event_name)) {
-        return ['valid' => false, 'message' => '種目名は必須です。'];
-    }
-    
-    if (empty($stroke_type) || !in_array($stroke_type, ['butterfly', 'backstroke', 'breaststroke', 'freestyle', 'medley'])) {
-        return ['valid' => false, 'message' => '有効な泳法を選択してください。'];
-    }
-    
-    if ($distance_meters <= 0) {
-        return ['valid' => false, 'message' => '距離は正の値で入力してください。'];
-    }
-    
-    if (!in_array($pool_type, ['SCM', 'LCM'])) {
-        return ['valid' => false, 'message' => '有効なプール種別を選択してください。'];
-    }
-    
-    if (empty($final_time)) {
-        return ['valid' => false, 'message' => '最終タイムは必須です。'];
-    }
-    
-    // タイム形式の検証
-    if (!preg_match('/^(\d{1,2}:)?\d{1,2}\.\d{2}$/', $final_time)) {
-        return ['valid' => false, 'message' => 'タイム形式が正しくありません。（例: 23.45 または 1:23.45）'];
-    }
-    
-    return ['valid' => true, 'message' => 'OK'];
-}
-
-/**
  * 自己ベストかどうかをチェック
  */
 function checkPersonalBest($user_id, $stroke_type, $distance_meters, $pool_type, $new_time_centiseconds, $db) {
@@ -420,8 +296,8 @@ function recordPersonalBestHistory($user_id, $stroke_type, $distance_meters, $po
     $stmt = $db->prepare("
         INSERT INTO personal_best_history 
         (user_id, stroke_type, distance_meters, pool_type, result_id, 
-         previous_time_centiseconds, new_time_centiseconds, improvement_centiseconds, record_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE())
+         previous_time_centiseconds, new_time_centiseconds, improvement_centiseconds, record_date, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), NOW())
     ");
     $stmt->execute([
         $user_id, $stroke_type, $distance_meters, $pool_type, $result_id,
@@ -443,6 +319,8 @@ function processLapTimes($lap_times_data, $input_method, $distance_meters, $pool
         $cumulative_time = 0;
         
         for ($i = 0; $i < count($lap_times_data) && $i < $expected_laps; $i++) {
+            if (empty($lap_times_data[$i])) continue;
+            
             $lap_time_cs = parseTimeStringToCentiseconds($lap_times_data[$i]);
             $cumulative_time += $lap_time_cs;
             
@@ -456,6 +334,8 @@ function processLapTimes($lap_times_data, $input_method, $distance_meters, $pool
     } else {
         // 累積タイム入力（その時点での合計タイム）
         for ($i = 0; $i < count($lap_times_data) && $i < $expected_laps; $i++) {
+            if (empty($lap_times_data[$i])) continue;
+            
             $split_time_cs = parseTimeStringToCentiseconds($lap_times_data[$i]);
             $lap_time_cs = $i === 0 ? $split_time_cs : ($split_time_cs - parseTimeStringToCentiseconds($lap_times_data[$i - 1]));
             
@@ -505,121 +385,4 @@ function formatCentisecondsToTime($centiseconds) {
         return sprintf('%d.%02d', $seconds, $cs);
     }
 }
-
-/**
- * 競技結果を更新する
- */
-function updateRaceResult() {
-    // 更新機能の実装（必要に応じて）
-    header('Content-Type: application/json');
-    echo json_encode(['message' => '更新機能は準備中です。']);
-    exit;
-}
-
-/**
- * 競技結果を削除する
- */
-function deleteRaceResult() {
-    $result_id = (int)($_POST['result_id'] ?? 0);
-    
-    if ($result_id <= 0) {
-        header('Content-Type: application/json');
-        echo json_encode(['error' => '無効な結果IDです。']);
-        exit;
-    }
-    
-    try {
-        $db = getDbConnection();
-        
-        // 結果と大会の所有権確認
-        $stmt = $db->prepare("
-            SELECT r.result_id, c.user_id, c.competition_id 
-            FROM race_results r
-            JOIN competitions c ON r.competition_id = c.competition_id
-            WHERE r.result_id = ?
-        ");
-        $stmt->execute([$result_id]);
-        $result = $stmt->fetch();
-        
-        if (!$result || $result['user_id'] != $_SESSION['user_id']) {
-            header('Content-Type: application/json');
-            echo json_encode(['error' => '指定された結果が見つからないか、所有権がありません。']);
-            exit;
-        }
-        
-        // トランザクション開始
-        $db->beginTransaction();
-        
-        // ラップタイムを削除
-        $stmt = $db->prepare("DELETE FROM lap_times WHERE result_id = ?");
-        $stmt->execute([$result_id]);
-        
-        // 自己ベスト履歴を削除
-        $stmt = $db->prepare("DELETE FROM personal_best_history WHERE result_id = ?");
-        $stmt->execute([$result_id]);
-        
-        // 結果を削除
-        $stmt = $db->prepare("DELETE FROM race_results WHERE result_id = ?");
-        $stmt->execute([$result_id]);
-        
-        $db->commit();
-        
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'message' => '競技結果が正常に削除されました。'
-        ]);
-        exit;
-        
-    } catch (PDOException $e) {
-        $db->rollBack();
-        error_log('競技結果削除エラー: ' . $e->getMessage());
-        header('Content-Type: application/json');
-        echo json_encode(['error' => '競技結果の削除中にエラーが発生しました。']);
-        exit;
-    }
-}
-
-/**
- * 種目設定を取得する
- */
-function getEventConfiguration() {
-    $stroke_type = $_POST['stroke_type'] ?? '';
-    $pool_type = $_POST['pool_type'] ?? '';
-    
-    try {
-        $db = getDbConnection();
-        
-        $sql = "SELECT * FROM event_configurations WHERE is_valid = TRUE";
-        $params = [];
-        
-        if (!empty($stroke_type)) {
-            $sql .= " AND stroke_type = ?";
-            $params[] = $stroke_type;
-        }
-        
-        if (!empty($pool_type)) {
-            $sql .= " AND pool_type = ?";
-            $params[] = $pool_type;
-        }
-        
-        $sql .= " ORDER BY distance_meters";
-        
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        $events = $stmt->fetchAll();
-        
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'events' => $events
-        ]);
-        exit;
-        
-    } catch (PDOException $e) {
-        error_log('種目設定取得エラー: ' . $e->getMessage());
-        header('Content-Type: application/json');
-        echo json_encode(['error' => '種目設定の取得中にエラーが発生しました。']);
-        exit;
-    }
-}
+?>
