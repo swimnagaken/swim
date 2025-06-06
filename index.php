@@ -817,27 +817,109 @@ if (isLoggedIn()) {
         </div>
     </section>
 
-
-<!-- スポンサー募集セクション 
-<section class="py-12 bg-blue-50">
+<!-- クラウドファンディング挑戦中セクション 
+<section class="py-12 bg-gradient-to-r from-orange-50 to-red-50">
     <div class="container mx-auto px-6">
-        <div class="max-w-3xl mx-auto text-center">
-            <h2 class="text-2xl font-bold mb-4">スポンサー募集</h2>
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <p class="mb-4">SwimLogは完全無料で提供しています。サービスの継続・発展のため、スポンサーを募集しています。</p>
-                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                    <p class="text-yellow-700">
-                        <span class="font-bold">スポンサー特典：</span> 
-                        バナー広告掲載、スポンサーページでの紹介、メール通知へのロゴ掲載など
-                    </p>
+        <div class="max-w-4xl mx-auto text-center">
+            <div class="mb-6">
+                <span class="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full mb-4 inline-block">
+                    <i class="fas fa-fire mr-1"></i> クラウドファンディング挑戦中
+                </span>
+                <h2 class="text-3xl font-bold mb-4">
+                    <i class="fas fa-rocket text-orange-500 mr-2"></i>
+                    SwimLogを次のレベルへ！
+                </h2>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-lg p-8 mb-6">
+                <div class="flex flex-col md:flex-row items-center gap-8">
+                    <div class="md:w-2/3 text-left">
+                        <h3 class="text-xl font-semibold mb-4 text-orange-600">
+                            🏊‍♀️ 水泳愛好家のためのアプリをもっと便利に
+                        </h3>
+                        <p class="text-gray-700 mb-4">
+                            SwimLogは現在<strong>完全無料</strong>でご利用いただけていますが、より多くの水泳愛好家の皆様に愛されるサービスにするため、CAMPFIREでクラウドファンディングに挑戦しています！
+                        </p>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <i class="fas fa-mobile-alt text-blue-600 text-2xl mb-2"></i>
+                                <h4 class="font-semibold text-sm">スマホアプリ開発</h4>
+                                <p class="text-xs text-gray-600">いつでもどこでも記録</p>
+                            </div>
+                            <div class="bg-green-50 p-4 rounded-lg">
+                                <i class="fas fa-chart-line text-green-600 text-2xl mb-2"></i>
+                                <h4 class="font-semibold text-sm">高度な分析機能</h4>
+                                <p class="text-xs text-gray-600">AI による練習提案</p>
+                            </div>
+                            <div class="bg-purple-50 p-4 rounded-lg">
+                                <i class="fas fa-users text-purple-600 text-2xl mb-2"></i>
+                                <h4 class="font-semibold text-sm">コミュニティ機能</h4>
+                                <p class="text-xs text-gray-600">仲間と記録を共有</p>
+                            </div>
+                            <div class="bg-yellow-50 p-4 rounded-lg">
+                                <i class="fas fa-stopwatch text-yellow-600 text-2xl mb-2"></i>
+                                <h4 class="font-semibold text-sm">リアルタイム計測</h4>
+                                <p class="text-xs text-gray-600">スマートウォッチ連携</p>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-orange-50 border-l-4 border-orange-400 p-4 mb-4">
+                            <p class="text-orange-700 text-sm">
+                                <span class="font-bold">🎁 支援者特典：</span>
+                                新機能の優先利用権、限定グッズ、開発進捗の先行報告など、支援額に応じた特典をご用意！
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="md:w-1/3 text-center">
+                        <div class="bg-gradient-to-b from-orange-400 to-red-500 text-white p-6 rounded-lg mb-4">
+                            <i class="fas fa-fire text-4xl mb-3"></i>
+                            <h3 class="text-lg font-bold mb-2">CAMPFIRE</h3>
+                            <p class="text-sm opacity-90">で挑戦中！</p>
+                        </div>
+                      
+                        <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                            <div class="text-center">
+                                <p class="text-xs text-gray-500 mb-1">現在の達成率</p>
+                                <div class="bg-gray-200 rounded-full h-3 mb-2">
+                                    <div class="bg-orange-500 rounded-full h-3" style="width: 0%"></div>
+                                </div>
+                                <p class="text-xs text-gray-600">
+                                    <span class="font-bold">0%</span> 達成
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div> 
+                
+            
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="#" target="_blank" 
+                       class="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-4 px-8 rounded-lg inline-flex items-center justify-center transition shadow-lg">
+                        <i class="fas fa-external-link-alt mr-2"></i>
+                        CAMPFIREで支援する
+                    </a>
+                    <a href="mailto:cre.eight12@gmail.com?subject=SwimLogクラウドファンディングについて" 
+                       class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-4 px-8 rounded-lg inline-flex items-center justify-center transition">
+                        <i class="fas fa-envelope mr-2"></i>
+                        詳細をお問い合わせ
+                    </a>
                 </div>
-                <a href="mailto:cre.eight12@gmail.com?subject=SwimLogスポンサーについて" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg inline-flex items-center">
-                    <i class="fas fa-envelope mr-2"></i> スポンサーについてお問い合わせ
-                </a>
+            </div>
+            
+            <div class="text-center">
+                <p class="text-sm text-gray-600 mb-2">
+                    <i class="fas fa-heart text-red-500 mr-1"></i>
+                    皆様の支援が、水泳愛好家の未来を創ります
+                </p>
+                <p class="text-xs text-gray-500">
+                    ※ SwimLogは引き続き基本機能を無料でご利用いただけます
+                </p>
             </div>
         </div>
     </div>
-</section>
+</section> 
 -->
 
    <!-- 運営情報 -->
@@ -857,3 +939,12 @@ if (isLoggedIn()) {
     include 'includes/footer.php';
 }
 ?>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QMTKRPLHDD"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QMTKRPLHDD');
+</script>

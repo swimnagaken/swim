@@ -1,0 +1,360 @@
+/* SwimLog 法務ページ用CSS */
+
+/* ベーススタイル */
+.legal-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.7;
+    color: #333;
+}
+
+/* ヘッダー */
+.legal-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #2c3e50;
+}
+
+.legal-header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+/* ナビゲーションリンク */
+.navigation-links {
+    text-align: center;
+    margin: 2rem 0;
+    padding: 1rem;
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.navigation-links a {
+    margin: 0 1rem;
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.navigation-links a:hover {
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+}
+
+/* コンテンツエリア */
+.legal-content {
+    margin-top: 2rem;
+}
+
+.legal-content h3 {
+    color: #34495e;
+    font-size: 1.4rem;
+    margin: 2.5rem 0 1rem 0;
+    border-left: 4px solid #3498db;
+    padding-left: 1rem;
+    font-weight: 600;
+}
+
+.legal-content h4 {
+    color: #2c3e50;
+    font-size: 1.2rem;
+    margin: 1.5rem 0 0.8rem 0;
+    font-weight: 600;
+}
+
+.legal-content p {
+    margin-bottom: 1rem;
+    text-align: justify;
+    font-size: 1rem;
+}
+
+.legal-content ul, .legal-content ol {
+    margin: 1rem 0 1rem 2rem;
+}
+
+.legal-content li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+/* 特別なテキストスタイル */
+.intro-text {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 6px;
+    border-left: 4px solid #6c757d;
+    font-style: italic;
+    color: #495057;
+}
+
+.info-list {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 6px;
+    list-style: none !important;
+    margin-left: 0 !important;
+}
+
+.info-list li {
+    padding: 0.3rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.info-list li:last-child {
+    border-bottom: none;
+}
+
+/* ハイライトボックス */
+.highlight-box {
+    background: linear-gradient(45deg, #e3f2fd, #f3e5f5);
+    border: 1px solid #2196f3;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+}
+
+.highlight-box h4 {
+    color: #1976d2;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.highlight-box ul {
+    margin-left: 1.5rem;
+}
+
+/* ビジネス情報ボックス */
+.business-info {
+    background: linear-gradient(45deg, #fff3cd, #ffeaa7);
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+}
+
+.business-info h4 {
+    color: #856404;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+/* 連絡先情報ボックス */
+.contact-info {
+    background: linear-gradient(45deg, #d4edda, #c3e6cb);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    border-left: 6px solid #28a745;
+}
+
+.contact-info h4 {
+    color: #155724;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.contact-info p {
+    color: #155724;
+    margin-bottom: 0.5rem;
+}
+
+.contact-info .external-contact {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #28a745;
+    font-weight: 600;
+}
+
+.contact-info ul {
+    margin-left: 1.5rem;
+}
+
+.contact-info a {
+    color: #155724;
+    text-decoration: underline;
+}
+
+.contact-info a:hover {
+    color: #0d4017;
+}
+
+/* 日付情報 */
+.date-info {
+    text-align: right;
+    color: #666;
+    font-style: italic;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 2px solid #dee2e6;
+    font-size: 0.9rem;
+}
+
+/* 戻るリンク */
+.back-link {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.back-link a {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 500;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.back-link a:hover {
+    background: linear-gradient(45deg, #0056b3, #004085);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 123, 255, 0.4);
+    text-decoration: none;
+    color: white;
+}
+
+/* リンクスタイル */
+.legal-content a {
+    color: #007bff;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.legal-content a:hover {
+    color: #0056b3;
+    border-bottom-color: #0056b3;
+    text-decoration: none;
+}
+
+/* 強調テキスト */
+.legal-content strong {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+/* レスポンシブデザイン */
+@media (max-width: 768px) {
+    .legal-container {
+        margin: 1rem;
+        padding: 1.5rem;
+        border-radius: 8px;
+    }
+    
+    .legal-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .legal-content h3 {
+        font-size: 1.2rem;
+        margin: 2rem 0 0.8rem 0;
+    }
+    
+    .legal-content h4 {
+        font-size: 1.1rem;
+    }
+    
+    .navigation-links {
+        padding: 0.8rem;
+    }
+    
+    .navigation-links a {
+        display: block;
+        margin: 0.3rem 0;
+        padding: 0.8rem;
+        text-align: center;
+    }
+    
+    .legal-content ul, .legal-content ol {
+        margin-left: 1.5rem;
+    }
+    
+    .highlight-box, .business-info, .contact-info {
+        padding: 1rem;
+        margin: 1.5rem 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .legal-container {
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+    
+    .legal-header h1 {
+        font-size: 1.6rem;
+    }
+    
+    .legal-content {
+        font-size: 0.95rem;
+    }
+    
+    .legal-content ul, .legal-content ol {
+        margin-left: 1rem;
+    }
+}
+
+/* 印刷用スタイル */
+@media print {
+    .legal-container {
+        box-shadow: none;
+        margin: 0;
+        padding: 1rem;
+    }
+    
+    .navigation-links, .back-link {
+        display: none;
+    }
+    
+    .highlight-box, .business-info, .contact-info {
+        background: #f8f9fa !important;
+        border: 1px solid #ccc !important;
+    }
+    
+    .legal-content a {
+        color: #000 !important;
+        text-decoration: underline !important;
+    }
+}
+
+/* アクセシビリティ対応 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* フォーカス状態の改善 */
+.legal-content a:focus,
+.navigation-links a:focus,
+.back-link a:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* セレクション時のスタイル */
+::selection {
+    background: #007bff;
+    color: white;
+}
+
+::-moz-selection {
+    background: #007bff;
+    color: white;
+}

@@ -13,6 +13,12 @@
                 <div class="text-sm text-gray-400">
                     &copy; <?php echo date('Y'); ?> SwimLog by Cre.eight12. All rights reserved.
                 </div>
+                <div class="footer-links">
+            <a href="terms.php">利用規約</a> | 
+            <a href="privacy.php">プライバシーポリシー</a> |
+            <a href="commerce.php">特定商取引法に基づく表記</a> |
+            <a href="mailto:cre.eight12@gmail.com?subject=SwimLogに関するお問い合わせ">お問い合わせ</a>
+        </div>
             </div>
         </div>
     </footer>

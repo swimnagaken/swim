@@ -27,16 +27,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['password'] ?? '';
         $password_confirm = $_POST['password_confirm'] ?? '';
         
-        // 基本的な検証
-        if (empty($username) || empty($email) || empty($password) || empty($password_confirm)) {
-            $error_message = 'すべての項目を入力してください。';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error_message = '有効なメールアドレスを入力してください。';
-        } elseif (strlen($password) < 8) {
-            $error_message = 'パスワードは8文字以上で入力してください。';
-        } elseif ($password !== $password_confirm) {
-            $error_message = 'パスワードが一致しません。';
-        } else {
+       // 基本的な検証
+       if (empty($username) || empty($email) || empty($password) || empty($password_confirm)) {
+        $error_message = 'すべての項目を入力してください。';
+    } elseif (!isset($_POST['agree_terms'])) {
+        $error_message = '利用規約およびプライバシーポリシーおよび特定商取引法に基づく表記に同意してください。';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error_message = '有効なメールアドレスを入力してください。';
+    } elseif (strlen($password) < 8) {
+        $error_message = 'パスワードは8文字以上で入力してください。';
+    } elseif ($password !== $password_confirm) {
+        $error_message = 'パスワードが一致しません。';
+    } else {
             // ユーザー登録を実行
             $result = registerUser($username, $email, $password);
             
@@ -125,6 +127,25 @@ include 'includes/header.php';
                 >
             </div>
             
+            <!-- ここに追加 ↓ -->
+            
+<div class="mb-6">
+    <label class="flex items-start">
+        <input 
+            type="checkbox" 
+            name="agree_terms" 
+            class="mt-1 mr-2" 
+            required
+        >
+        <span class="text-gray-700 text-sm">
+            <a href="terms.php" target="_blank" class="text-blue-600 hover:text-blue-800 underline">利用規約</a>、
+            <a href="privacy.php" target="_blank" class="text-blue-600 hover:text-blue-800 underline">プライバシーポリシー</a>および
+            <a href="commerce.php" target="_blank" class="text-blue-600 hover:text-blue-800 underline">特定商取引法に基づく表記</a>に同意する
+        </span>
+    </label>
+</div>
+            <!-- ここまで追加 ↑ -->
+            
             <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition">
                 登録する
             </button>
@@ -143,3 +164,13 @@ include 'includes/header.php';
 // フッターの読み込み
 include 'includes/footer.php';
 ?>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QMTKRPLHDD"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QMTKRPLHDD');
+</script>
